@@ -39,300 +39,304 @@ var DEFAULT_SETTINGS = {
 
 // src/main.ts
 var STYLES = `
-/* Notion-style floating outline - right side with lines */
-.inline-outline {
-	position: fixed;
-	right: 24px;
-	top: 50%;
-	transform: translateY(-50%);
-	z-index: 100;
-	display: flex;
-	flex-direction: column;
-	align-items: flex-end;
-	gap: 6px;
-	padding: 12px 8px;
-	border-radius: 6px;
-	background: transparent;
-	max-height: 70vh;
-	overflow-y: auto;
-	overflow-x: hidden;
-}
-
-/* Hover state with background */
-.inline-outline:hover {
-	background: var(--background-primary);
-	box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
-	padding: 12px 16px 12px 12px;
-	align-items: flex-start;
-}
-
-/* Each heading item */
-.inline-outline-item {
-	display: flex;
-	align-items: center;
-	justify-content: flex-end;
-	cursor: pointer;
-	padding: 3px 0;
-	width: 100%;
-}
-
-.inline-outline:hover .inline-outline-item {
-	justify-content: flex-start;
-}
-
-/* The line indicator */
-.inline-outline-line {
-	height: 2px;
-	border-radius: 1px;
-	background: var(--text-faint);
-	opacity: 0.5;
-	flex-shrink: 0;
-}
-
-.inline-outline-item:hover .inline-outline-line {
-	background: var(--text-accent);
-	opacity: 1;
-}
-
-.inline-outline-item.active .inline-outline-line {
-	background: var(--text-accent);
-	opacity: 1;
-	height: 3px;
-}
-
-/* Line widths */
-.inline-outline-level-1 .inline-outline-line { width: 28px; }
-.inline-outline-level-2 .inline-outline-line { width: 22px; }
-.inline-outline-level-3 .inline-outline-line { width: 16px; }
-.inline-outline-level-4 .inline-outline-line { width: 12px; }
-.inline-outline-level-5 .inline-outline-line { width: 8px; }
-.inline-outline-level-6 .inline-outline-line { width: 6px; }
-
-/* Hide line on hover - show text instead */
-.inline-outline:hover .inline-outline-line {
-	display: none;
-}
-
-/* Text label */
-.inline-outline-text {
-	font-size: 12px;
-	line-height: 1.4;
-	color: var(--text-muted);
-	white-space: nowrap;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	display: none;
-	max-width: 200px;
-}
-
-.inline-outline:hover .inline-outline-text {
-	display: block;
-}
-
-.inline-outline-item:hover .inline-outline-text {
-	color: var(--text-normal);
-}
-
-.inline-outline-item.active .inline-outline-text {
-	color: var(--text-accent);
-	font-weight: 500;
-}
-
-/* Indentation for heading levels when expanded */
-.inline-outline:hover .inline-outline-level-1 { padding-left: 0; }
-.inline-outline:hover .inline-outline-level-2 { padding-left: 10px; }
-.inline-outline:hover .inline-outline-level-3 { padding-left: 20px; }
-.inline-outline:hover .inline-outline-level-4 { padding-left: 30px; }
-.inline-outline:hover .inline-outline-level-5 { padding-left: 40px; }
-.inline-outline:hover .inline-outline-level-6 { padding-left: 50px; }
-
-/* Font weight by level */
-.inline-outline-level-1 .inline-outline-text {
-	font-weight: 600;
-	font-size: 13px;
-}
-
-.inline-outline-level-2 .inline-outline-text {
-	font-weight: 500;
-}
-
-/* Empty state */
-.inline-outline-empty {
-	display: none;
-}
-
-.inline-outline:hover .inline-outline-empty {
-	display: block;
-	color: var(--text-faint);
-	font-size: 11px;
-	white-space: nowrap;
-}
-
-/* Scrollbar */
-.inline-outline::-webkit-scrollbar {
-	width: 4px;
-}
-
-.inline-outline::-webkit-scrollbar-track {
-	background: transparent;
-}
-
-.inline-outline::-webkit-scrollbar-thumb {
-	background: var(--background-modifier-border);
-	border-radius: 2px;
-}
-
-/* Hide on narrow screens */
-@media (max-width: 900px) {
-	.inline-outline {
-		display: none;
-	}
-}
-
-/* Dark mode */
-.theme-dark .inline-outline:hover {
-	background: var(--background-secondary);
-	box-shadow: 0 2px 16px rgba(0, 0, 0, 0.3);
-}
-
-/* ========== MINIMAL STYLE ========== */
-/* Notion-like: positioned higher, smaller, more subtle */
-
-.inline-outline.minimal-style {
-	top: 120px;
-	transform: none;
-	gap: 4px;
-	padding: 8px 6px;
-	max-height: 50vh;
-}
-
-.inline-outline.minimal-style:hover {
-	padding: 8px 12px 8px 8px;
-}
-
-.inline-outline.minimal-style .inline-outline-item {
-	padding: 2px 0;
-}
-
-/* Smaller line widths for minimal */
-.inline-outline.minimal-style .inline-outline-level-1 .inline-outline-line { width: 20px; }
-.inline-outline.minimal-style .inline-outline-level-2 .inline-outline-line { width: 16px; }
-.inline-outline.minimal-style .inline-outline-level-3 .inline-outline-line { width: 12px; }
-.inline-outline.minimal-style .inline-outline-level-4 .inline-outline-line { width: 9px; }
-.inline-outline.minimal-style .inline-outline-level-5 .inline-outline-line { width: 6px; }
-.inline-outline.minimal-style .inline-outline-level-6 .inline-outline-line { width: 4px; }
-
-.inline-outline.minimal-style .inline-outline-line {
-	height: 1.5px;
-	opacity: 0.4;
-}
-
-.inline-outline.minimal-style .inline-outline-item.active .inline-outline-line {
-	height: 2px;
-}
-
-/* Smaller text for minimal */
-.inline-outline.minimal-style .inline-outline-text {
-	font-size: 11px;
-	max-width: 160px;
-}
-
-.inline-outline.minimal-style .inline-outline-level-1 .inline-outline-text {
-	font-size: 11px;
-	font-weight: 600;
-}
-
-.inline-outline.minimal-style .inline-outline-level-2 .inline-outline-text {
-	font-weight: 500;
-}
-
-/* Smaller indentation for minimal */
-.inline-outline.minimal-style:hover .inline-outline-level-1 { padding-left: 0; }
-.inline-outline.minimal-style:hover .inline-outline-level-2 { padding-left: 8px; }
-.inline-outline.minimal-style:hover .inline-outline-level-3 { padding-left: 16px; }
-.inline-outline.minimal-style:hover .inline-outline-level-4 { padding-left: 24px; }
-.inline-outline.minimal-style:hover .inline-outline-level-5 { padding-left: 32px; }
-.inline-outline.minimal-style:hover .inline-outline-level-6 { padding-left: 40px; }
-
-.inline-outline.minimal-style .inline-outline-empty {
-	font-size: 10px;
-}
+.inline-outline{position:fixed;right:24px;top:50%;transform:translateY(-50%);z-index:100;display:flex;flex-direction:column;align-items:flex-end;gap:6px;padding:12px 8px;border-radius:6px;background:transparent;max-height:70vh;overflow-y:auto;overflow-x:hidden}
+.inline-outline:hover{background:var(--background-primary);box-shadow:0 2px 12px rgba(0,0,0,.1);padding:12px 16px 12px 12px;align-items:flex-start}
+.inline-outline-item{display:flex;align-items:center;justify-content:flex-end;cursor:pointer;padding:3px 0;width:100%}
+.inline-outline:hover .inline-outline-item{justify-content:flex-start}
+.inline-outline-line{height:2px;border-radius:1px;background:var(--text-faint);opacity:.5;flex-shrink:0}
+.inline-outline-item:hover .inline-outline-line{background:var(--text-accent);opacity:1}
+.inline-outline-item.active .inline-outline-line{background:var(--text-accent);opacity:1;height:3px}
+.inline-outline-level-1 .inline-outline-line{width:28px}
+.inline-outline-level-2 .inline-outline-line{width:22px}
+.inline-outline-level-3 .inline-outline-line{width:16px}
+.inline-outline-level-4 .inline-outline-line{width:12px}
+.inline-outline-level-5 .inline-outline-line{width:8px}
+.inline-outline-level-6 .inline-outline-line{width:6px}
+.inline-outline:hover .inline-outline-line{display:none}
+.inline-outline-text{font-size:12px;line-height:1.4;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:none;max-width:200px}
+.inline-outline:hover .inline-outline-text{display:block}
+.inline-outline-item:hover .inline-outline-text{color:var(--text-normal)}
+.inline-outline-item.active .inline-outline-text{color:var(--text-accent);font-weight:500}
+.inline-outline:hover .inline-outline-level-1{padding-left:0}
+.inline-outline:hover .inline-outline-level-2{padding-left:10px}
+.inline-outline:hover .inline-outline-level-3{padding-left:20px}
+.inline-outline:hover .inline-outline-level-4{padding-left:30px}
+.inline-outline:hover .inline-outline-level-5{padding-left:40px}
+.inline-outline:hover .inline-outline-level-6{padding-left:50px}
+.inline-outline-level-1 .inline-outline-text{font-weight:600;font-size:13px}
+.inline-outline-level-2 .inline-outline-text{font-weight:500}
+.inline-outline-empty{display:none}
+.inline-outline:hover .inline-outline-empty{display:block;color:var(--text-faint);font-size:11px;white-space:nowrap}
+.inline-outline::-webkit-scrollbar{width:4px}
+.inline-outline::-webkit-scrollbar-track{background:transparent}
+.inline-outline::-webkit-scrollbar-thumb{background:var(--background-modifier-border);border-radius:2px}
+@media(max-width:900px){.inline-outline{display:none}}
+.theme-dark .inline-outline:hover{background:var(--background-secondary);box-shadow:0 2px 16px rgba(0,0,0,.3)}
+.inline-outline.minimal-style{top:120px;transform:none;gap:4px;padding:8px 6px;max-height:50vh}
+.inline-outline.minimal-style:hover{padding:8px 12px 8px 8px}
+.inline-outline.minimal-style .inline-outline-item{padding:2px 0}
+.inline-outline.minimal-style .inline-outline-level-1 .inline-outline-line{width:20px}
+.inline-outline.minimal-style .inline-outline-level-2 .inline-outline-line{width:16px}
+.inline-outline.minimal-style .inline-outline-level-3 .inline-outline-line{width:12px}
+.inline-outline.minimal-style .inline-outline-level-4 .inline-outline-line{width:9px}
+.inline-outline.minimal-style .inline-outline-level-5 .inline-outline-line{width:6px}
+.inline-outline.minimal-style .inline-outline-level-6 .inline-outline-line{width:4px}
+.inline-outline.minimal-style .inline-outline-line{height:1.5px;opacity:.4}
+.inline-outline.minimal-style .inline-outline-item.active .inline-outline-line{height:2px}
+.inline-outline.minimal-style .inline-outline-text{font-size:11px;max-width:160px}
+.inline-outline.minimal-style .inline-outline-level-1 .inline-outline-text{font-size:11px;font-weight:600}
+.inline-outline.minimal-style .inline-outline-level-2 .inline-outline-text{font-weight:500}
+.inline-outline.minimal-style:hover .inline-outline-level-1{padding-left:0}
+.inline-outline.minimal-style:hover .inline-outline-level-2{padding-left:8px}
+.inline-outline.minimal-style:hover .inline-outline-level-3{padding-left:16px}
+.inline-outline.minimal-style:hover .inline-outline-level-4{padding-left:24px}
+.inline-outline.minimal-style:hover .inline-outline-level-5{padding-left:32px}
+.inline-outline.minimal-style:hover .inline-outline-level-6{padding-left:40px}
+.inline-outline.minimal-style .inline-outline-empty{font-size:10px}
 `;
+var READING_LINE_OFFSET = 60;
+var LINK_REGEX = /\[\[(?:[^\]|]+\|)?([^\]]+)\]\]|\[([^\]]+)\]\([^)]+\)/g;
 var InlineOutlinePlugin = class extends import_obsidian.Plugin {
   constructor() {
     super(...arguments);
     this.outlineEl = null;
-    this.activeHeadingIndex = -1;
+    this.activeIndex = -1;
     this.headings = [];
-    this.currentScrollContainer = null;
-    this.isReadingMode = false;
-    this.resizeObserver = null;
+    this.headingTexts = [];
+    // Cached normalized texts
+    this.scrollContainer = null;
+    this.isReading = false;
     this.scrollRAF = null;
-    // Use arrow function to preserve 'this' context
+    this.resizeRAF = null;
     this.onScroll = () => {
       if (this.scrollRAF)
         return;
       this.scrollRAF = requestAnimationFrame(() => {
         this.scrollRAF = null;
-        this.updateActiveHeadingFromScroll();
+        this.updateActive();
       });
     };
   }
   async onload() {
     await this.loadSettings();
-    this.addStyleSheet();
+    const style = document.createElement("style");
+    style.id = "inline-outline-styles";
+    style.textContent = STYLES;
+    document.head.appendChild(style);
+    this.register(() => style.remove());
     this.addSettingTab(new InlineOutlineSettingTab(this.app, this));
-    this.addCommand({
-      id: "toggle-outline",
-      name: "Toggle Inline Outline",
-      callback: () => this.toggleOutline()
-    });
-    const debouncedRefresh = (0, import_obsidian.debounce)(() => this.refreshOutline(), 300, true);
-    this.registerEvent(
-      this.app.workspace.on("active-leaf-change", () => {
-        setTimeout(() => {
-          this.setupScrollListener();
-          this.refreshOutline();
-          this.updateOutlinePosition();
-          this.activeHeadingIndex = -1;
-          this.updateActiveHeadingFromScroll();
-        }, 100);
-      })
-    );
-    this.registerEvent(
-      this.app.workspace.on("layout-change", () => {
-        setTimeout(() => {
-          this.setupScrollListener();
-          this.refreshOutline();
-          this.activeHeadingIndex = -1;
-          this.updateActiveHeadingFromScroll();
-        }, 100);
-        this.updateOutlinePosition();
-      })
-    );
-    this.registerEvent(
-      this.app.metadataCache.on("changed", () => {
-        debouncedRefresh();
-      })
-    );
+    this.addCommand({ id: "toggle-outline", name: "Toggle Inline Outline", callback: () => this.toggle() });
+    const refresh = (0, import_obsidian.debounce)(() => this.refresh(), 300, true);
+    this.registerEvent(this.app.workspace.on("active-leaf-change", () => setTimeout(() => this.init(), 100)));
+    this.registerEvent(this.app.workspace.on("layout-change", () => {
+      this.updatePosition();
+      setTimeout(() => this.init(), 100);
+    }));
+    this.registerEvent(this.app.metadataCache.on("changed", refresh));
     this.app.workspace.onLayoutReady(() => {
       this.createOutline();
-      this.setupSidebarObserver();
-      setTimeout(() => {
-        this.setupScrollListener();
-        this.refreshOutline();
-        this.updateOutlinePosition();
-      }, 100);
+      this.observeSidebar();
+      setTimeout(() => this.init(), 100);
     });
   }
   onunload() {
-    this.removeScrollListener();
-    this.removeOutline();
-    if (this.resizeObserver) {
-      this.resizeObserver.disconnect();
-    }
-    if (this.scrollRAF) {
+    var _a, _b;
+    (_a = this.scrollContainer) == null ? void 0 : _a.removeEventListener("scroll", this.onScroll);
+    (_b = this.outlineEl) == null ? void 0 : _b.remove();
+    if (this.scrollRAF)
       cancelAnimationFrame(this.scrollRAF);
+    if (this.resizeRAF)
+      cancelAnimationFrame(this.resizeRAF);
+  }
+  init() {
+    this.setupScroll();
+    this.refresh();
+  }
+  toggle() {
+    if (this.outlineEl) {
+      this.outlineEl.style.display = this.outlineEl.style.display === "none" ? "" : "none";
+    }
+  }
+  createOutline() {
+    var _a;
+    (_a = this.outlineEl) == null ? void 0 : _a.remove();
+    this.outlineEl = document.createElement("div");
+    this.outlineEl.className = "inline-outline" + (this.settings.minimalStyle ? " minimal-style" : "");
+    this.outlineEl.id = "inline-outline";
+    document.body.appendChild(this.outlineEl);
+  }
+  updateOutlineStyle() {
+    var _a;
+    (_a = this.outlineEl) == null ? void 0 : _a.classList.toggle("minimal-style", this.settings.minimalStyle);
+  }
+  setupScroll() {
+    var _a, _b;
+    (_a = this.scrollContainer) == null ? void 0 : _a.removeEventListener("scroll", this.onScroll);
+    const view = this.app.workspace.getActiveViewOfType(import_obsidian.MarkdownView);
+    if (!view) {
+      this.scrollContainer = null;
+      return;
+    }
+    this.isReading = view.getMode() === "preview";
+    const selector = this.isReading ? ".markdown-preview-view" : ".cm-scroller";
+    this.scrollContainer = view.contentEl.querySelector(selector);
+    (_b = this.scrollContainer) == null ? void 0 : _b.addEventListener("scroll", this.onScroll, { passive: true });
+  }
+  observeSidebar() {
+    const sidebar = document.querySelector(".mod-right-split");
+    if (!sidebar)
+      return;
+    new ResizeObserver(() => {
+      if (this.resizeRAF)
+        return;
+      this.resizeRAF = requestAnimationFrame(() => {
+        this.resizeRAF = null;
+        this.updatePosition();
+      });
+    }).observe(sidebar);
+  }
+  updatePosition() {
+    if (!this.outlineEl)
+      return;
+    const sidebar = document.querySelector(".mod-right-split");
+    const width = (sidebar == null ? void 0 : sidebar.getBoundingClientRect().width) || 0;
+    this.outlineEl.style.right = `${width > 0 ? width + 24 : 24}px`;
+  }
+  refresh() {
+    var _a;
+    const file = this.app.workspace.getActiveFile();
+    const cache = file && this.app.metadataCache.getFileCache(file);
+    this.headings = ((_a = cache == null ? void 0 : cache.headings) == null ? void 0 : _a.map((h) => ({
+      level: h.level,
+      text: h.heading,
+      position: h.position
+    }))) || [];
+    this.headingTexts = this.headings.map((h) => this.strip(h.text).toLowerCase());
+    this.render();
+    this.activeIndex = -1;
+    if (this.isReading) {
+      setTimeout(() => this.updateActive(), 150);
+    } else {
+      this.updateActive();
+    }
+  }
+  strip(text) {
+    return text.replace(LINK_REGEX, "$1$2").trim();
+  }
+  render() {
+    if (!this.outlineEl)
+      return;
+    this.outlineEl.innerHTML = "";
+    if (!this.headings.length) {
+      const empty = document.createElement("div");
+      empty.className = "inline-outline-empty";
+      empty.textContent = "No headings";
+      this.outlineEl.appendChild(empty);
+      return;
+    }
+    const frag = document.createDocumentFragment();
+    this.headings.forEach((h, i) => {
+      const item = document.createElement("div");
+      item.className = `inline-outline-item inline-outline-level-${h.level}`;
+      item.innerHTML = `<div class="inline-outline-line"></div><span class="inline-outline-text">${this.strip(h.text)}</span>`;
+      item.onclick = () => this.navigate(i);
+      frag.appendChild(item);
+    });
+    this.outlineEl.appendChild(frag);
+  }
+  updateActive() {
+    var _a;
+    if (!this.outlineEl || !this.headings.length || !this.scrollContainer)
+      return;
+    const rect = this.scrollContainer.getBoundingClientRect();
+    const readingLine = rect.top + READING_LINE_OFFSET + 20;
+    let active = 0;
+    if (this.isReading) {
+      const view = this.app.workspace.getActiveViewOfType(import_obsidian.MarkdownView);
+      const preview = view == null ? void 0 : view.contentEl.querySelector(".markdown-preview-view");
+      if (!preview)
+        return;
+      const els = Array.from(preview.querySelectorAll("h1,h2,h3,h4,h5,h6"));
+      let lastAbove = 0;
+      for (const el of els) {
+        const top = el.getBoundingClientRect().top;
+        const text = (el.textContent || "").toLowerCase().trim();
+        let idx = this.headingTexts.indexOf(text);
+        if (idx === -1) {
+          idx = this.headingTexts.findIndex((t) => text.includes(t) || t.includes(text));
+        }
+        if (idx === -1)
+          continue;
+        if (top <= readingLine)
+          lastAbove = idx;
+        if (top >= readingLine - 20) {
+          active = idx;
+          break;
+        }
+      }
+      if (active === 0 && lastAbove > 0)
+        active = lastAbove;
+    } else {
+      const view = this.app.workspace.getActiveViewOfType(import_obsidian.MarkdownView);
+      const cm = (_a = view == null ? void 0 : view.editor) == null ? void 0 : _a.cm;
+      if (!(cm == null ? void 0 : cm.coordsAtPos))
+        return;
+      let lastAbove = 0;
+      for (let i = 0; i < this.headings.length; i++) {
+        try {
+          const line = this.headings[i].position.start.line;
+          const coords = cm.coordsAtPos(cm.state.doc.line(line + 1).from, -1);
+          if (!coords)
+            continue;
+          if (coords.top <= readingLine)
+            lastAbove = i;
+          if (coords.top >= readingLine - 20) {
+            active = i;
+            break;
+          }
+        } catch (e) {
+          continue;
+        }
+      }
+      if (active === 0 && lastAbove > 0)
+        active = lastAbove;
+    }
+    if (active !== this.activeIndex) {
+      this.activeIndex = active;
+      const items = this.outlineEl.querySelectorAll(".inline-outline-item");
+      items.forEach((el, i) => el.classList.toggle("active", i === active));
+    }
+  }
+  navigate(index) {
+    var _a;
+    const h = this.headings[index];
+    if (!h)
+      return;
+    const view = this.app.workspace.getActiveViewOfType(import_obsidian.MarkdownView);
+    if (!view)
+      return;
+    this.activeIndex = index;
+    (_a = this.outlineEl) == null ? void 0 : _a.querySelectorAll(".inline-outline-item").forEach(
+      (el, i) => el.classList.toggle("active", i === index)
+    );
+    if (this.isReading) {
+      const file = this.app.workspace.getActiveFile();
+      if (file) {
+        const headingText = h.text;
+        const leaf = this.app.workspace.getLeaf(false);
+        if (leaf) {
+          this.app.workspace.openLinkText(
+            file.path + "#" + headingText,
+            file.path,
+            false
+          );
+        }
+      }
+    } else {
+      const line = h.position.start.line;
+      const editor = view.editor;
+      editor.setCursor({ line, ch: 0 });
+      editor.scrollIntoView({ from: { line, ch: 0 }, to: { line, ch: 0 } }, true);
     }
   }
   async loadSettings() {
@@ -341,328 +345,6 @@ var InlineOutlinePlugin = class extends import_obsidian.Plugin {
   async saveSettings() {
     await this.saveData(this.settings);
   }
-  addStyleSheet() {
-    const style = document.createElement("style");
-    style.id = "inline-outline-styles";
-    style.textContent = STYLES;
-    document.head.appendChild(style);
-    this.register(() => style.remove());
-  }
-  toggleOutline() {
-    if (this.outlineEl) {
-      const isHidden = this.outlineEl.style.display === "none";
-      this.outlineEl.style.display = isHidden ? "" : "none";
-    }
-  }
-  removeOutline() {
-    if (this.outlineEl) {
-      this.outlineEl.remove();
-      this.outlineEl = null;
-    }
-  }
-  removeScrollListener() {
-    if (this.currentScrollContainer) {
-      this.currentScrollContainer.removeEventListener("scroll", this.onScroll);
-      this.currentScrollContainer = null;
-    }
-  }
-  getScrollContainer() {
-    const activeView = this.app.workspace.getActiveViewOfType(import_obsidian.MarkdownView);
-    if (!activeView)
-      return null;
-    const mode = activeView.getMode();
-    if (mode === "preview") {
-      this.isReadingMode = true;
-      const preview = activeView.contentEl.querySelector(".markdown-preview-view");
-      if (preview)
-        return preview;
-    } else {
-      this.isReadingMode = false;
-      const cmScroller = activeView.contentEl.querySelector(".cm-scroller");
-      if (cmScroller)
-        return cmScroller;
-    }
-    return null;
-  }
-  setupScrollListener() {
-    this.removeScrollListener();
-    const scrollContainer = this.getScrollContainer();
-    if (scrollContainer) {
-      this.currentScrollContainer = scrollContainer;
-      scrollContainer.addEventListener("scroll", this.onScroll, { passive: true });
-    }
-  }
-  setupSidebarObserver() {
-    const rightSplit = document.querySelector(".mod-right-split");
-    if (!rightSplit)
-      return;
-    this.resizeObserver = new ResizeObserver(() => {
-      this.updateOutlinePosition();
-    });
-    this.resizeObserver.observe(rightSplit);
-  }
-  updateOutlinePosition() {
-    if (!this.outlineEl)
-      return;
-    const rightSplit = document.querySelector(".mod-right-split");
-    if (rightSplit) {
-      const rect = rightSplit.getBoundingClientRect();
-      if (rect.width > 0) {
-        this.outlineEl.style.right = `${rect.width + 24}px`;
-      } else {
-        this.outlineEl.style.right = "24px";
-      }
-    } else {
-      this.outlineEl.style.right = "24px";
-    }
-  }
-  createOutline() {
-    this.removeOutline();
-    this.outlineEl = document.createElement("div");
-    this.outlineEl.className = "inline-outline";
-    this.outlineEl.id = "inline-outline";
-    if (this.settings.minimalStyle) {
-      this.outlineEl.classList.add("minimal-style");
-    }
-    document.body.appendChild(this.outlineEl);
-  }
-  updateOutlineStyle() {
-    if (!this.outlineEl)
-      return;
-    if (this.settings.minimalStyle) {
-      this.outlineEl.classList.add("minimal-style");
-    } else {
-      this.outlineEl.classList.remove("minimal-style");
-    }
-  }
-  refreshOutline() {
-    this.headings = this.getHeadings();
-    this.renderOutline();
-    this.activeHeadingIndex = -1;
-    if (this.isReadingMode) {
-      setTimeout(() => this.updateActiveHeadingFromScroll(), 50);
-      setTimeout(() => this.updateActiveHeadingFromScroll(), 150);
-      setTimeout(() => this.updateActiveHeadingFromScroll(), 300);
-    } else {
-      this.updateActiveHeadingFromScroll();
-    }
-  }
-  getHeadings() {
-    const activeFile = this.app.workspace.getActiveFile();
-    if (!activeFile)
-      return [];
-    const cache = this.app.metadataCache.getFileCache(activeFile);
-    if (!cache || !cache.headings)
-      return [];
-    return cache.headings.map((heading) => ({
-      level: heading.level,
-      text: heading.heading,
-      position: heading.position
-    }));
-  }
-  renderOutline() {
-    if (!this.outlineEl)
-      return;
-    this.outlineEl.empty();
-    if (this.headings.length === 0) {
-      const empty = document.createElement("div");
-      empty.className = "inline-outline-empty";
-      empty.textContent = "No headings";
-      this.outlineEl.appendChild(empty);
-      return;
-    }
-    this.headings.forEach((heading, index) => {
-      const item = document.createElement("div");
-      item.className = `inline-outline-item inline-outline-level-${heading.level}`;
-      item.dataset.index = String(index);
-      const line = document.createElement("div");
-      line.className = "inline-outline-line";
-      const text = document.createElement("span");
-      text.className = "inline-outline-text";
-      text.textContent = this.stripLinkSyntax(heading.text);
-      item.appendChild(line);
-      item.appendChild(text);
-      item.onclick = () => this.navigateToHeading(heading, index);
-      this.outlineEl.appendChild(item);
-    });
-  }
-  getHeadingElements() {
-    const activeView = this.app.workspace.getActiveViewOfType(import_obsidian.MarkdownView);
-    if (!activeView)
-      return [];
-    if (this.isReadingMode) {
-      const previewView = activeView.contentEl.querySelector(".markdown-preview-view");
-      if (!previewView)
-        return [];
-      return Array.from(previewView.querySelectorAll("h1, h2, h3, h4, h5, h6"));
-    }
-    return [];
-  }
-  updateActiveHeadingFromScroll() {
-    if (!this.outlineEl || this.headings.length === 0)
-      return;
-    const activeView = this.app.workspace.getActiveViewOfType(import_obsidian.MarkdownView);
-    if (!activeView)
-      return;
-    const scrollContainer = this.currentScrollContainer;
-    if (!scrollContainer)
-      return;
-    const containerRect = scrollContainer.getBoundingClientRect();
-    const readingLineOffset = 60;
-    const readingLine = containerRect.top + readingLineOffset + 20;
-    let activeIndex = 0;
-    if (this.isReadingMode) {
-      const headingEls = this.getHeadingElements();
-      if (headingEls.length > 0) {
-        const textToIndex = /* @__PURE__ */ new Map();
-        for (let i = 0; i < this.headings.length; i++) {
-          const normalizedText = this.stripLinkSyntax(this.headings[i].text).toLowerCase().trim();
-          textToIndex.set(normalizedText, i);
-        }
-        const visibleHeadings = [];
-        for (const el of headingEls) {
-          const rect = el.getBoundingClientRect();
-          const elText = (el.textContent || "").toLowerCase().trim();
-          let cacheIndex = textToIndex.get(elText);
-          if (cacheIndex === void 0) {
-            for (const [text, idx] of textToIndex) {
-              if (elText.includes(text) || text.includes(elText)) {
-                cacheIndex = idx;
-                break;
-              }
-            }
-          }
-          if (cacheIndex !== void 0) {
-            visibleHeadings.push({ cacheIndex, top: rect.top });
-          }
-        }
-        if (visibleHeadings.length > 0) {
-          visibleHeadings.sort((a, b) => a.top - b.top);
-          let found = false;
-          for (const h of visibleHeadings) {
-            if (h.top >= readingLine - 20) {
-              activeIndex = h.cacheIndex;
-              found = true;
-              break;
-            }
-          }
-          if (!found) {
-            const lastAbove = visibleHeadings[visibleHeadings.length - 1];
-            activeIndex = lastAbove.cacheIndex;
-          }
-        } else {
-          const scrollRatio = scrollContainer.scrollTop / (scrollContainer.scrollHeight - scrollContainer.clientHeight);
-          activeIndex = Math.min(
-            Math.floor(scrollRatio * this.headings.length),
-            this.headings.length - 1
-          );
-        }
-      }
-    } else {
-      const editor = activeView.editor;
-      const cmEditor = editor.cm;
-      if (cmEditor && cmEditor.coordsAtPos) {
-        const headingPositions = [];
-        for (let i = 0; i < this.headings.length; i++) {
-          try {
-            const line = this.headings[i].position.start.line;
-            const lineInfo = cmEditor.state.doc.line(line + 1);
-            const coords = cmEditor.coordsAtPos(lineInfo.from, -1);
-            if (coords) {
-              headingPositions.push({ index: i, top: coords.top });
-            }
-          } catch (e) {
-            continue;
-          }
-        }
-        if (headingPositions.length > 0) {
-          let found = false;
-          for (const h of headingPositions) {
-            if (h.top >= readingLine - 20) {
-              activeIndex = h.index;
-              found = true;
-              break;
-            }
-          }
-          if (!found) {
-            activeIndex = headingPositions[headingPositions.length - 1].index;
-          }
-        }
-      }
-    }
-    if (activeIndex !== this.activeHeadingIndex) {
-      this.activeHeadingIndex = activeIndex;
-      this.updateOutlineClasses();
-    }
-  }
-  updateOutlineClasses() {
-    if (!this.outlineEl)
-      return;
-    const items = this.outlineEl.querySelectorAll(".inline-outline-item");
-    items.forEach((item, index) => {
-      item.classList.toggle("active", index === this.activeHeadingIndex);
-    });
-  }
-  stripLinkSyntax(text) {
-    let result = text.replace(/\[\[([^\]|]+)\|([^\]]+)\]\]/g, "$2");
-    result = result.replace(/\[\[([^\]]+)\]\]/g, "$1");
-    result = result.replace(/\[([^\]]+)\]\([^)]+\)/g, "$1");
-    return result;
-  }
-  navigateToHeading(heading, index) {
-    const activeView = this.app.workspace.getActiveViewOfType(import_obsidian.MarkdownView);
-    if (!activeView)
-      return;
-    const readingLineOffset = 60;
-    if (this.isReadingMode) {
-      const headingEls = this.getHeadingElements();
-      const scrollContainer = this.currentScrollContainer;
-      if (!scrollContainer)
-        return;
-      const targetText = this.stripLinkSyntax(heading.text).toLowerCase().trim();
-      let targetEl = null;
-      for (const el of headingEls) {
-        const elText = (el.textContent || "").toLowerCase().trim();
-        if (elText === targetText || elText.includes(targetText) || targetText.includes(elText)) {
-          targetEl = el;
-          break;
-        }
-      }
-      if (targetEl) {
-        const containerRect = scrollContainer.getBoundingClientRect();
-        const elRect = targetEl.getBoundingClientRect();
-        const targetScroll = scrollContainer.scrollTop + (elRect.top - containerRect.top) - readingLineOffset;
-        scrollContainer.scrollTo({ top: Math.max(0, targetScroll), behavior: "smooth" });
-      }
-    } else {
-      const line = heading.position.start.line;
-      const editor = activeView.editor;
-      const cmEditor = editor.cm;
-      if (cmEditor && cmEditor.coordsAtPos) {
-        const scrollContainer = this.currentScrollContainer;
-        if (scrollContainer) {
-          try {
-            const lineInfo = cmEditor.state.doc.line(line + 1);
-            const coords = cmEditor.coordsAtPos(lineInfo.from, -1);
-            if (coords) {
-              const containerRect = scrollContainer.getBoundingClientRect();
-              const targetScroll = scrollContainer.scrollTop + (coords.top - containerRect.top) - readingLineOffset;
-              scrollContainer.scrollTo({ top: Math.max(0, targetScroll), behavior: "smooth" });
-            }
-          } catch (e) {
-            editor.setCursor({ line, ch: 0 });
-            editor.scrollIntoView({ from: { line, ch: 0 }, to: { line, ch: 0 } }, true);
-          }
-        }
-      } else {
-        editor.setCursor({ line, ch: 0 });
-        editor.scrollIntoView({ from: { line, ch: 0 }, to: { line, ch: 0 } }, true);
-      }
-    }
-    this.activeHeadingIndex = index;
-    this.updateOutlineClasses();
-    setTimeout(() => this.updateActiveHeadingFromScroll(), 400);
-  }
 };
 var InlineOutlineSettingTab = class extends import_obsidian.PluginSettingTab {
   constructor(app, plugin) {
@@ -670,21 +352,16 @@ var InlineOutlineSettingTab = class extends import_obsidian.PluginSettingTab {
     this.plugin = plugin;
   }
   display() {
-    const { containerEl } = this;
-    containerEl.empty();
-    containerEl.createEl("h2", { text: "Inline Outline Settings" });
-    new import_obsidian.Setting(containerEl).setName("Minimal Style").setDesc("Notion-like appearance: positioned higher, smaller lines and text").addToggle(
-      (toggle) => toggle.setValue(this.plugin.settings.minimalStyle).onChange(async (value) => {
-        this.plugin.settings.minimalStyle = value;
-        await this.plugin.saveSettings();
-        this.plugin.updateOutlineStyle();
-      })
-    );
-    new import_obsidian.Setting(containerEl).setName("Auto Update").setDesc("Automatically update outline when content changes").addToggle(
-      (toggle) => toggle.setValue(this.plugin.settings.autoUpdate).onChange(async (value) => {
-        this.plugin.settings.autoUpdate = value;
-        await this.plugin.saveSettings();
-      })
-    );
+    this.containerEl.empty();
+    this.containerEl.createEl("h2", { text: "Inline Outline Settings" });
+    new import_obsidian.Setting(this.containerEl).setName("Minimal Style").setDesc("Notion-like: positioned higher, smaller lines and text").addToggle((t) => t.setValue(this.plugin.settings.minimalStyle).onChange(async (v) => {
+      this.plugin.settings.minimalStyle = v;
+      await this.plugin.saveSettings();
+      this.plugin.updateOutlineStyle();
+    }));
+    new import_obsidian.Setting(this.containerEl).setName("Auto Update").setDesc("Automatically update outline when content changes").addToggle((t) => t.setValue(this.plugin.settings.autoUpdate).onChange(async (v) => {
+      this.plugin.settings.autoUpdate = v;
+      await this.plugin.saveSettings();
+    }));
   }
 };
