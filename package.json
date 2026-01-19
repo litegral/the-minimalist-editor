@@ -1,0 +1,26 @@
+{
+  "name": "inline-outline",
+  "version": "1.0.0",
+  "description": "Shows an inline outline on the side of the document in a Notion-like style",
+  "main": "main.js",
+  "scripts": {
+    "dev": "node esbuild.config.mjs",
+    "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production"
+  },
+  "keywords": [
+    "obsidian",
+    "outline",
+    "navigation",
+    "notion"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^16.11.6",
+    "builtin-modules": "^3.3.0",
+    "esbuild": "0.17.3",
+    "obsidian": "latest",
+    "tslib": "2.6.2",
+    "typescript": "5.3.3"
+  }
+}
