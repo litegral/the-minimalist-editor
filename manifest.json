@@ -1,10 +1,10 @@
 {
-  "id": "inline-outline",
-  "name": "Inline Outline",
+  "id": "the-minimalist-editor",
+  "name": "The Minimalist Editor",
   "version": "1.0.0",
-  "description": "Shows an inline outline on the side of the document in a Notion-like style",
-  "author": "Your Name",
-  "authorUrl": "https://github.com/yourusername",
+  "description": "A plugin that provides a minimalist editing experience by hiding unnecessary UI elements. Also follow a Notion-like style for a clean look.",
+  "author": "@litegral",
+  "authorUrl": "https://github.com/litegral",
   "isDesktopOnly": true,
   "minAppVersion": "0.15.0"
 }

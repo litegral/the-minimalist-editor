@@ -33,7 +33,8 @@ var import_obsidian = require("obsidian");
 var DEFAULT_SETTINGS = {
   autoUpdate: true,
   showEmptyState: true,
-  outlineWidth: 250
+  outlineWidth: 250,
+  minimalStyle: false
 };
 
 // src/main.ts
@@ -192,6 +193,69 @@ var STYLES = `
 .theme-dark .inline-outline:hover {
 	background: var(--background-secondary);
 	box-shadow: 0 2px 16px rgba(0, 0, 0, 0.3);
+}
+
+/* ========== MINIMAL STYLE ========== */
+/* Notion-like: positioned higher, smaller, more subtle */
+
+.inline-outline.minimal-style {
+	top: 120px;
+	transform: none;
+	gap: 4px;
+	padding: 8px 6px;
+	max-height: 50vh;
+}
+
+.inline-outline.minimal-style:hover {
+	padding: 8px 12px 8px 8px;
+}
+
+.inline-outline.minimal-style .inline-outline-item {
+	padding: 2px 0;
+}
+
+/* Smaller line widths for minimal */
+.inline-outline.minimal-style .inline-outline-level-1 .inline-outline-line { width: 20px; }
+.inline-outline.minimal-style .inline-outline-level-2 .inline-outline-line { width: 16px; }
+.inline-outline.minimal-style .inline-outline-level-3 .inline-outline-line { width: 12px; }
+.inline-outline.minimal-style .inline-outline-level-4 .inline-outline-line { width: 9px; }
+.inline-outline.minimal-style .inline-outline-level-5 .inline-outline-line { width: 6px; }
+.inline-outline.minimal-style .inline-outline-level-6 .inline-outline-line { width: 4px; }
+
+.inline-outline.minimal-style .inline-outline-line {
+	height: 1.5px;
+	opacity: 0.4;
+}
+
+.inline-outline.minimal-style .inline-outline-item.active .inline-outline-line {
+	height: 2px;
+}
+
+/* Smaller text for minimal */
+.inline-outline.minimal-style .inline-outline-text {
+	font-size: 11px;
+	max-width: 160px;
+}
+
+.inline-outline.minimal-style .inline-outline-level-1 .inline-outline-text {
+	font-size: 11px;
+	font-weight: 600;
+}
+
+.inline-outline.minimal-style .inline-outline-level-2 .inline-outline-text {
+	font-weight: 500;
+}
+
+/* Smaller indentation for minimal */
+.inline-outline.minimal-style:hover .inline-outline-level-1 { padding-left: 0; }
+.inline-outline.minimal-style:hover .inline-outline-level-2 { padding-left: 8px; }
+.inline-outline.minimal-style:hover .inline-outline-level-3 { padding-left: 16px; }
+.inline-outline.minimal-style:hover .inline-outline-level-4 { padding-left: 24px; }
+.inline-outline.minimal-style:hover .inline-outline-level-5 { padding-left: 32px; }
+.inline-outline.minimal-style:hover .inline-outline-level-6 { padding-left: 40px; }
+
+.inline-outline.minimal-style .inline-outline-empty {
+	font-size: 10px;
 }
 `;
 var InlineOutlinePlugin = class extends import_obsidian.Plugin {
@@ -357,7 +421,19 @@ var InlineOutlinePlugin = class extends import_obsidian.Plugin {
     this.outlineEl = document.createElement("div");
     this.outlineEl.className = "inline-outline";
     this.outlineEl.id = "inline-outline";
+    if (this.settings.minimalStyle) {
+      this.outlineEl.classList.add("minimal-style");
+    }
     document.body.appendChild(this.outlineEl);
+  }
+  updateOutlineStyle() {
+    if (!this.outlineEl)
+      return;
+    if (this.settings.minimalStyle) {
+      this.outlineEl.classList.add("minimal-style");
+    } else {
+      this.outlineEl.classList.remove("minimal-style");
+    }
   }
   refreshOutline() {
     this.headings = this.getHeadings();
@@ -432,7 +508,8 @@ var InlineOutlinePlugin = class extends import_obsidian.Plugin {
     if (!scrollContainer)
       return;
     const containerRect = scrollContainer.getBoundingClientRect();
-    const readingLine = containerRect.top + 80;
+    const readingLineOffset = 60;
+    const readingLine = containerRect.top + readingLineOffset + 20;
     let activeIndex = 0;
     if (this.isReadingMode) {
       const headingEls = this.getHeadingElements();
@@ -536,22 +613,51 @@ var InlineOutlinePlugin = class extends import_obsidian.Plugin {
     const activeView = this.app.workspace.getActiveViewOfType(import_obsidian.MarkdownView);
     if (!activeView)
       return;
+    const readingLineOffset = 60;
     if (this.isReadingMode) {
       const headingEls = this.getHeadingElements();
-      if (index < headingEls.length) {
-        const el = headingEls[index];
-        const scrollContainer = this.currentScrollContainer;
-        if (scrollContainer) {
-          const containerRect = scrollContainer.getBoundingClientRect();
-          const elRect = el.getBoundingClientRect();
-          const targetScroll = scrollContainer.scrollTop + (elRect.top - containerRect.top) - 20;
-          scrollContainer.scrollTo({ top: targetScroll, behavior: "smooth" });
+      const scrollContainer = this.currentScrollContainer;
+      if (!scrollContainer)
+        return;
+      const targetText = this.stripLinkSyntax(heading.text).toLowerCase().trim();
+      let targetEl = null;
+      for (const el of headingEls) {
+        const elText = (el.textContent || "").toLowerCase().trim();
+        if (elText === targetText || elText.includes(targetText) || targetText.includes(elText)) {
+          targetEl = el;
+          break;
         }
+      }
+      if (targetEl) {
+        const containerRect = scrollContainer.getBoundingClientRect();
+        const elRect = targetEl.getBoundingClientRect();
+        const targetScroll = scrollContainer.scrollTop + (elRect.top - containerRect.top) - readingLineOffset;
+        scrollContainer.scrollTo({ top: Math.max(0, targetScroll), behavior: "smooth" });
       }
     } else {
       const line = heading.position.start.line;
-      activeView.editor.setCursor({ line, ch: 0 });
-      activeView.editor.scrollIntoView({ from: { line, ch: 0 }, to: { line, ch: 0 } }, true);
+      const editor = activeView.editor;
+      const cmEditor = editor.cm;
+      if (cmEditor && cmEditor.coordsAtPos) {
+        const scrollContainer = this.currentScrollContainer;
+        if (scrollContainer) {
+          try {
+            const lineInfo = cmEditor.state.doc.line(line + 1);
+            const coords = cmEditor.coordsAtPos(lineInfo.from, -1);
+            if (coords) {
+              const containerRect = scrollContainer.getBoundingClientRect();
+              const targetScroll = scrollContainer.scrollTop + (coords.top - containerRect.top) - readingLineOffset;
+              scrollContainer.scrollTo({ top: Math.max(0, targetScroll), behavior: "smooth" });
+            }
+          } catch (e) {
+            editor.setCursor({ line, ch: 0 });
+            editor.scrollIntoView({ from: { line, ch: 0 }, to: { line, ch: 0 } }, true);
+          }
+        }
+      } else {
+        editor.setCursor({ line, ch: 0 });
+        editor.scrollIntoView({ from: { line, ch: 0 }, to: { line, ch: 0 } }, true);
+      }
     }
     this.activeHeadingIndex = index;
     this.updateOutlineClasses();
@@ -567,6 +673,13 @@ var InlineOutlineSettingTab = class extends import_obsidian.PluginSettingTab {
     const { containerEl } = this;
     containerEl.empty();
     containerEl.createEl("h2", { text: "Inline Outline Settings" });
+    new import_obsidian.Setting(containerEl).setName("Minimal Style").setDesc("Notion-like appearance: positioned higher, smaller lines and text").addToggle(
+      (toggle) => toggle.setValue(this.plugin.settings.minimalStyle).onChange(async (value) => {
+        this.plugin.settings.minimalStyle = value;
+        await this.plugin.saveSettings();
+        this.plugin.updateOutlineStyle();
+      })
+    );
     new import_obsidian.Setting(containerEl).setName("Auto Update").setDesc("Automatically update outline when content changes").addToggle(
       (toggle) => toggle.setValue(this.plugin.settings.autoUpdate).onChange(async (value) => {
         this.plugin.settings.autoUpdate = value;
