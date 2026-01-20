@@ -254,27 +254,21 @@ var InlineOutlinePlugin = class extends import_obsidian.Plugin {
     if (!this.outlineEl || !this.headings.length || !this.scrollContainer)
       return;
     const rect = this.scrollContainer.getBoundingClientRect();
-    const readingLine = rect.top + 80;
-    let active = 0, lastAbove = 0;
-    if (this.isReading) {
+    const threshold = rect.top + rect.height * 0.4;
+    const atTop = this.scrollContainer.scrollTop < 50;
+    let active = 0;
+    if (atTop) {
+      active = 0;
+    } else if (this.isReading) {
       const view = this.getView();
-      const els = Array.from((_a = view == null ? void 0 : view.contentEl.querySelectorAll(".markdown-preview-view h1,h2,h3,h4,h5,h6")) != null ? _a : []);
-      if (!els.length)
-        return;
+      const els = Array.from((_a = view == null ? void 0 : view.contentEl.querySelectorAll(".markdown-preview-view :is(h1,h2,h3,h4,h5,h6)")) != null ? _a : []);
       for (const el of els) {
-        const top = el.getBoundingClientRect().top;
         const text = (el.textContent || "").toLowerCase().trim();
         let idx = this.headingTexts.indexOf(text);
         if (idx === -1)
           idx = this.headingTexts.findIndex((t) => text.includes(t) || t.includes(text));
-        if (idx === -1)
-          continue;
-        if (top <= readingLine)
-          lastAbove = idx;
-        if (top >= readingLine - 20) {
+        if (idx !== -1 && el.getBoundingClientRect().top <= threshold)
           active = idx;
-          break;
-        }
       }
     } else {
       const view = this.getView();
@@ -284,21 +278,13 @@ var InlineOutlinePlugin = class extends import_obsidian.Plugin {
       for (let i = 0; i < this.headings.length; i++) {
         try {
           const coords = cm.coordsAtPos(cm.state.doc.line(this.headings[i].position.start.line + 1).from, -1);
-          if (!coords)
-            continue;
-          if (coords.top <= readingLine)
-            lastAbove = i;
-          if (coords.top >= readingLine - 20) {
+          if (coords && coords.top <= threshold)
             active = i;
-            break;
-          }
         } catch (e) {
           continue;
         }
       }
     }
-    if (active === 0 && lastAbove > 0)
-      active = lastAbove;
     if (active !== this.activeIndex) {
       this.activeIndex = active;
       this.outlineItems.forEach((el, i) => el.classList.toggle("active", i === active));
