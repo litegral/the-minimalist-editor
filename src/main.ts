@@ -35,8 +35,8 @@ export default class InlineOutlinePlugin extends Plugin {
 		this.updateFocusOpacity();
 
 		this.addSettingTab(new MinimalistSettingTab(this.app, this));
-		this.addCommand({ id: 'toggle-outline', name: 'Toggle Inline Outline', callback: () => this.toggleOutline() });
-		this.addCommand({ id: 'toggle-focus-mode', name: 'Toggle Focus Mode', callback: () => this.toggleFocusMode() });
+		this.addCommand({ id: 'toggle-outline', name: 'Toggle inline outline', callback: () => this.toggleOutline() });
+		this.addCommand({ id: 'toggle-focus-mode', name: 'Toggle focus mode', callback: () => this.toggleFocusMode() });
 
 		const refresh = debounce(() => this.refresh(), 300, true);
 		this.registerEvent(this.app.workspace.on('active-leaf-change', () => { this.cleanup(); setTimeout(() => this.init(), 100); }));
@@ -349,7 +349,7 @@ export default class InlineOutlinePlugin extends Plugin {
 		this.lastFocusLine = this.lastFocusIdx = -1;
 	}
 
-	async loadSettings() { this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData()); }
+	async loadSettings() { this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData() as Partial<MinimalistSettings> | null); }
 	async saveSettings() { await this.saveData(this.settings); }
 }
 
@@ -359,7 +359,6 @@ class MinimalistSettingTab extends PluginSettingTab {
 	display() {
 		const { containerEl } = this;
 		containerEl.empty();
-		new Setting(containerEl).setName('The Minimalist Editor').setHeading();
 
 		const sections: [string, [string, string, keyof MinimalistSettings, () => void][]][] = [
 			['Inline outline', [

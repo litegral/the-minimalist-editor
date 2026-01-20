@@ -40,51 +40,6 @@ var DEFAULT_SETTINGS = {
 };
 
 // src/main.ts
-var STYLES = `
-:root{--outline-right-offset:24px;--outline-max-width:200px}
-.inline-outline{position:fixed;right:var(--outline-right-offset);top:50%;transform:translateY(-50%);z-index:10;display:flex;flex-direction:column;align-items:flex-end;gap:6px;padding:12px 8px;border-radius:6px;background:transparent;max-height:70vh;overflow-y:auto;overflow-x:hidden}
-.inline-outline:hover{background:var(--background-primary);box-shadow:0 2px 12px rgba(0,0,0,.1);padding:12px 16px 12px 12px;align-items:flex-start}
-.inline-outline-item{display:flex;align-items:center;justify-content:flex-end;cursor:pointer;padding:3px 0;width:100%}
-.inline-outline:hover .inline-outline-item{justify-content:flex-start}
-.inline-outline-line{height:2px;border-radius:1px;background:var(--text-faint);opacity:.5;flex-shrink:0}
-.inline-outline-item:hover .inline-outline-line,.inline-outline-item.active .inline-outline-line{background:var(--text-accent);opacity:1}
-.inline-outline-item.active .inline-outline-line{height:3px}
-.inline-outline-level-1 .inline-outline-line{width:28px}.inline-outline-level-2 .inline-outline-line{width:22px}.inline-outline-level-3 .inline-outline-line{width:16px}.inline-outline-level-4 .inline-outline-line{width:12px}.inline-outline-level-5 .inline-outline-line{width:8px}.inline-outline-level-6 .inline-outline-line{width:6px}
-.inline-outline:hover .inline-outline-line{display:none}
-.inline-outline-text{font-size:12px;line-height:1.4;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:none;max-width:var(--outline-max-width)}
-.inline-outline:hover .inline-outline-text{display:block}
-.inline-outline-item:hover .inline-outline-text{color:var(--text-normal)}
-.inline-outline-item.active .inline-outline-text{color:var(--text-accent);font-weight:500}
-.inline-outline:hover .inline-outline-level-1{padding-left:0}.inline-outline:hover .inline-outline-level-2{padding-left:10px}.inline-outline:hover .inline-outline-level-3{padding-left:20px}.inline-outline:hover .inline-outline-level-4{padding-left:30px}.inline-outline:hover .inline-outline-level-5{padding-left:40px}.inline-outline:hover .inline-outline-level-6{padding-left:50px}
-.inline-outline-level-1 .inline-outline-text{font-weight:600;font-size:13px}.inline-outline-level-2 .inline-outline-text{font-weight:500}
-.inline-outline-empty{display:none}.inline-outline:hover .inline-outline-empty{display:block;color:var(--text-faint);font-size:11px;white-space:nowrap}
-.inline-outline::-webkit-scrollbar{width:4px}.inline-outline::-webkit-scrollbar-track{background:transparent}.inline-outline::-webkit-scrollbar-thumb{background:var(--background-modifier-border);border-radius:2px}
-@media(max-width:900px){.inline-outline{display:none}}
-.theme-dark .inline-outline:hover{background:var(--background-secondary);box-shadow:0 2px 16px rgba(0,0,0,.3)}
-.inline-outline.minimal-style{top:120px;transform:none;gap:4px;padding:8px 6px;max-height:50vh}
-.inline-outline.minimal-style:hover{padding:8px 12px 8px 8px}
-.inline-outline.minimal-style .inline-outline-item{padding:2px 0}
-.inline-outline.minimal-style .inline-outline-level-1 .inline-outline-line{width:20px}.inline-outline.minimal-style .inline-outline-level-2 .inline-outline-line{width:16px}.inline-outline.minimal-style .inline-outline-level-3 .inline-outline-line{width:12px}.inline-outline.minimal-style .inline-outline-level-4 .inline-outline-line{width:9px}.inline-outline.minimal-style .inline-outline-level-5 .inline-outline-line{width:6px}.inline-outline.minimal-style .inline-outline-level-6 .inline-outline-line{width:4px}
-.inline-outline.minimal-style .inline-outline-line{height:1.5px;opacity:.4}.inline-outline.minimal-style .inline-outline-item.active .inline-outline-line{height:2px}
-.inline-outline.minimal-style .inline-outline-text{font-size:11px;max-width:160px}.inline-outline.minimal-style .inline-outline-level-1 .inline-outline-text{font-size:11px;font-weight:600}.inline-outline.minimal-style .inline-outline-level-2 .inline-outline-text{font-weight:500}
-.inline-outline.minimal-style:hover .inline-outline-level-1{padding-left:0}.inline-outline.minimal-style:hover .inline-outline-level-2{padding-left:8px}.inline-outline.minimal-style:hover .inline-outline-level-3{padding-left:16px}.inline-outline.minimal-style:hover .inline-outline-level-4{padding-left:24px}.inline-outline.minimal-style:hover .inline-outline-level-5{padding-left:32px}.inline-outline.minimal-style:hover .inline-outline-level-6{padding-left:40px}
-.inline-outline.minimal-style .inline-outline-empty{font-size:10px}
-body.minimalist-hide-properties .markdown-source-view .metadata-container,body.minimalist-hide-properties .markdown-preview-view .metadata-container,body.minimalist-hide-properties .cm-line.HyperMD-frontmatter,body.minimalist-hide-properties .cm-line.HyperMD-frontmatter-begin,body.minimalist-hide-properties .cm-line.HyperMD-frontmatter-end{display:none!important}
-body.minimalist-hide-properties .workspace-leaf-content[data-type="file-properties"] .metadata-container{display:block!important}
-body.minimalist-hide-properties .workspace-leaf-content[data-type="file-properties"] .metadata-properties-heading{font-size:14px;color:var(--text-muted);font-weight:500;padding:8px 0}
-body.minimalist-hide-properties .workspace-leaf-content[data-type="file-properties"] .collapse-indicator{display:none!important}
-body.minimalist-hide-properties .workspace-leaf-content[data-type="file-properties"] .metadata-property{padding:6px 0}
-body.minimalist-hide-properties .workspace-leaf-content[data-type="file-properties"] .metadata-property-key{font-size:12px;color:var(--text-muted);font-weight:500}
-body.minimalist-hide-properties .workspace-leaf-content[data-type="file-properties"] .metadata-property-value{font-size:14px;color:var(--text-normal)}
-body.minimalist-hide-scrollbar .markdown-source-view ::-webkit-scrollbar,body.minimalist-hide-scrollbar .markdown-preview-view ::-webkit-scrollbar{width:0!important;height:0!important}
-body.minimalist-hide-scrollbar .cm-scroller{scrollbar-width:none}
-body.minimalist-focus-mode .markdown-source-view.mod-cm6 .cm-content>*{opacity:var(--focus-dim-opacity,.3);transition:opacity .12s ease-out}
-body.minimalist-focus-mode .markdown-source-view.mod-cm6 .cm-content>.cm-active,body.minimalist-focus-mode .markdown-source-view.mod-cm6 .cm-content>.cm-focus-active{opacity:1!important}
-body.minimalist-focus-mode .markdown-source-view.mod-cm6 .cm-content>.cm-focus-adjacent{opacity:calc(var(--focus-dim-opacity,.3) + .3)}
-body.minimalist-focus-mode .markdown-preview-view .markdown-preview-sizer>*{opacity:var(--focus-dim-opacity,.3);transition:opacity .12s ease-out}
-body.minimalist-focus-mode .markdown-preview-view .markdown-preview-sizer>.focus-active{opacity:1!important}
-body.minimalist-focus-mode .markdown-preview-view .markdown-preview-sizer>.focus-adjacent{opacity:calc(var(--focus-dim-opacity,.3) + .3)}
-`;
 var LINK_REGEX = /\[\[(?:[^\]|]+\|)?([^\]]+)\]\]|\[([^\]]+)\]\([^)]+\)/g;
 var FOCUS_CLASSES = ["cm-focus-active", "cm-focus-adjacent", "focus-active", "focus-adjacent"];
 var InlineOutlinePlugin = class extends import_obsidian.Plugin {
@@ -107,16 +62,11 @@ var InlineOutlinePlugin = class extends import_obsidian.Plugin {
   }
   async onload() {
     await this.loadSettings();
-    const style = document.createElement("style");
-    style.id = "minimalist-styles";
-    style.textContent = STYLES;
-    document.head.appendChild(style);
-    this.register(() => style.remove());
     this.applyBodyClasses();
     this.updateFocusOpacity();
     this.addSettingTab(new MinimalistSettingTab(this.app, this));
-    this.addCommand({ id: "toggle-outline", name: "Toggle Inline Outline", callback: () => this.toggleOutline() });
-    this.addCommand({ id: "toggle-focus-mode", name: "Toggle Focus Mode", callback: () => this.toggleFocusMode() });
+    this.addCommand({ id: "toggle-outline", name: "Toggle inline outline", callback: () => this.toggleOutline() });
+    this.addCommand({ id: "toggle-focus-mode", name: "Toggle focus mode", callback: () => this.toggleFocusMode() });
     const refresh = (0, import_obsidian.debounce)(() => this.refresh(), 300, true);
     this.registerEvent(this.app.workspace.on("active-leaf-change", () => {
       this.cleanup();
@@ -204,7 +154,7 @@ var InlineOutlinePlugin = class extends import_obsidian.Plugin {
   }
   toggleFocusMode() {
     this.settings.focusMode = !this.settings.focusMode;
-    this.saveSettings();
+    void this.saveSettings();
     this.applyBodyClasses();
     if (this.settings.focusMode) {
       this.cleanup();
@@ -271,7 +221,11 @@ var InlineOutlinePlugin = class extends import_obsidian.Plugin {
     this.headingTexts = this.headings.map((h) => this.strip(h.text).toLowerCase());
     this.render();
     this.activeIndex = -1;
-    this.isReading ? setTimeout(() => this.updateActive(), 150) : this.updateActive();
+    if (this.isReading) {
+      setTimeout(() => this.updateActive(), 150);
+    } else {
+      this.updateActive();
+    }
   }
   strip(text) {
     return text.replace(LINK_REGEX, "$1$2").trim();
@@ -358,7 +312,7 @@ var InlineOutlinePlugin = class extends import_obsidian.Plugin {
     this.outlineItems.forEach((el, i) => el.classList.toggle("active", i === index));
     const file = this.app.workspace.getActiveFile();
     if (file)
-      this.app.workspace.openLinkText(`${file.path}#${h.text}`, file.path, false);
+      void this.app.workspace.openLinkText(`${file.path}#${h.text}`, file.path, false);
   }
   updateFocus() {
     if (!this.settings.focusMode)
@@ -366,7 +320,11 @@ var InlineOutlinePlugin = class extends import_obsidian.Plugin {
     const view = this.getView();
     if (!view)
       return;
-    this.isReading ? this.updateReadingFocus(view) : this.updateEditFocus(view);
+    if (this.isReading) {
+      this.updateReadingFocus(view);
+    } else {
+      this.updateEditFocus(view);
+    }
   }
   updateEditFocus(view) {
     var _a, _b, _c, _d, _e, _f, _g, _h, _i;
@@ -481,18 +439,17 @@ var MinimalistSettingTab = class extends import_obsidian.PluginSettingTab {
   display() {
     const { containerEl } = this;
     containerEl.empty();
-    containerEl.createEl("h2", { text: "The Minimalist Editor" });
     const sections = [
-      ["Inline Outline", [
-        ["Show Outline", "Display the inline outline on the right side", "showOutline", () => this.plugin.toggleOutlineVisibility()],
-        ["Minimal Style", "Notion-like: positioned higher, smaller elements", "minimalOutline", () => this.plugin.updateOutlineStyle()]
+      ["Inline outline", [
+        ["Show outline", "Display the inline outline on the right side", "showOutline", () => this.plugin.toggleOutlineVisibility()],
+        ["Minimal style", "Notion-like: positioned higher, smaller elements", "minimalOutline", () => this.plugin.updateOutlineStyle()]
       ]],
       ["Distraction-free", [
-        ["Hide Properties", "Hide properties/metadata from editor (visible in sidebar)", "hideProperties", () => this.plugin.applyBodyClasses()],
-        ["Hide Scrollbar", "Hide scrollbar for cleaner appearance", "hideScrollbar", () => this.plugin.applyBodyClasses()]
+        ["Hide properties", "Hide properties/metadata from editor (visible in sidebar)", "hideProperties", () => this.plugin.applyBodyClasses()],
+        ["Hide scrollbar", "Hide scrollbar for cleaner appearance", "hideScrollbar", () => this.plugin.applyBodyClasses()]
       ]],
-      ["Focus Mode", [
-        ["Enable Focus Mode", "Dim content except current line/paragraph", "focusMode", () => {
+      ["Focus mode", [
+        ["Enable focus mode", "Dim content except current line/paragraph", "focusMode", () => {
           this.plugin.applyBodyClasses();
           if (this.plugin.settings.focusMode) {
             this.plugin["cleanup"]();
@@ -504,7 +461,7 @@ var MinimalistSettingTab = class extends import_obsidian.PluginSettingTab {
       ]]
     ];
     for (const [title, settings] of sections) {
-      containerEl.createEl("h3", { text: title });
+      new import_obsidian.Setting(containerEl).setName(title).setHeading();
       for (const [name, desc, key, onChange] of settings) {
         new import_obsidian.Setting(containerEl).setName(name).setDesc(desc).addToggle(
           (t) => t.setValue(this.plugin.settings[key]).onChange(async (v) => {
@@ -515,7 +472,7 @@ var MinimalistSettingTab = class extends import_obsidian.PluginSettingTab {
         );
       }
     }
-    new import_obsidian.Setting(containerEl).setName("Dim Opacity").setDesc("How much to dim unfocused content (lower = more dim)").addSlider((s) => s.setLimits(10, 70, 5).setValue(this.plugin.settings.focusDimOpacity).setDynamicTooltip().onChange(async (v) => {
+    new import_obsidian.Setting(containerEl).setName("Dim opacity").setDesc("How much to dim unfocused content (lower = more dim)").addSlider((s) => s.setLimits(10, 70, 5).setValue(this.plugin.settings.focusDimOpacity).setDynamicTooltip().onChange(async (v) => {
       this.plugin.settings.focusDimOpacity = v;
       await this.plugin.saveSettings();
       this.plugin.updateFocusOpacity();
