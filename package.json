@@ -1,7 +1,7 @@
 {
-  "name": "inline-outline",
+  "name": "minimalist-editor",
   "version": "1.0.0",
-  "description": "Shows an inline outline on the side of the document in a Notion-like style",
+  "description": "Distraction-free editing experience with a Notion-style inline outline",
   "main": "main.js",
   "scripts": {
     "dev": "node esbuild.config.mjs",

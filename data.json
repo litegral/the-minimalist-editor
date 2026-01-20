@@ -1,4 +1,9 @@
 {
+  "showOutline": true,
+  "minimalOutline": false,
+  "hideProperties": true,
+  "hideScrollbar": true,
+  "hideFrontmatter": false,
   "autoUpdate": true,
   "showEmptyState": true,
   "outlineWidth": 250,

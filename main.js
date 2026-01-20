@@ -31,15 +31,15 @@ var import_obsidian = require("obsidian");
 
 // src/settings.ts
 var DEFAULT_SETTINGS = {
-  autoUpdate: true,
-  showEmptyState: true,
-  outlineWidth: 250,
-  minimalStyle: false
+  showOutline: true,
+  minimalOutline: false,
+  hideProperties: true,
+  hideScrollbar: false
 };
 
 // src/main.ts
-var STYLES = `
-.inline-outline{position:fixed;right:24px;top:50%;transform:translateY(-50%);z-index:100;display:flex;flex-direction:column;align-items:flex-end;gap:6px;padding:12px 8px;border-radius:6px;background:transparent;max-height:70vh;overflow-y:auto;overflow-x:hidden}
+var OUTLINE_STYLES = `
+.inline-outline{position:fixed;right:24px;top:50%;transform:translateY(-50%);z-index:10;display:flex;flex-direction:column;align-items:flex-end;gap:6px;padding:12px 8px;border-radius:6px;background:transparent;max-height:70vh;overflow-y:auto;overflow-x:hidden}
 .inline-outline:hover{background:var(--background-primary);box-shadow:0 2px 12px rgba(0,0,0,.1);padding:12px 16px 12px 12px;align-items:flex-start}
 .inline-outline-item{display:flex;align-items:center;justify-content:flex-end;cursor:pointer;padding:3px 0;width:100%}
 .inline-outline:hover .inline-outline-item{justify-content:flex-start}
@@ -94,6 +94,55 @@ var STYLES = `
 .inline-outline.minimal-style:hover .inline-outline-level-6{padding-left:40px}
 .inline-outline.minimal-style .inline-outline-empty{font-size:10px}
 `;
+var MINIMALIST_STYLES = `
+/* Hide properties/frontmatter from main editor */
+body.minimalist-hide-properties .markdown-source-view .metadata-container,
+body.minimalist-hide-properties .markdown-preview-view .metadata-container {
+	display: none !important;
+}
+/* Also hide raw YAML frontmatter in source mode */
+body.minimalist-hide-properties .cm-line.HyperMD-frontmatter,
+body.minimalist-hide-properties .cm-line.HyperMD-frontmatter-begin,
+body.minimalist-hide-properties .cm-line.HyperMD-frontmatter-end {
+	display: none !important;
+}
+/* Keep properties visible in sidebar */
+body.minimalist-hide-properties .workspace-leaf-content[data-type="file-properties"] .metadata-container {
+	display: block !important;
+}
+/* Style properties in sidebar */
+body.minimalist-hide-properties .workspace-leaf-content[data-type="file-properties"] .metadata-properties-heading {
+	font-size: 14px;
+	color: var(--text-muted);
+	font-weight: 500;
+	padding: 8px 0;
+}
+body.minimalist-hide-properties .workspace-leaf-content[data-type="file-properties"] .collapse-indicator {
+	display: none !important;
+}
+body.minimalist-hide-properties .workspace-leaf-content[data-type="file-properties"] .metadata-property {
+	padding: 6px 0;
+}
+body.minimalist-hide-properties .workspace-leaf-content[data-type="file-properties"] .metadata-property-key {
+	font-size: 12px;
+	color: var(--text-muted);
+	font-weight: 500;
+}
+body.minimalist-hide-properties .workspace-leaf-content[data-type="file-properties"] .metadata-property-value {
+	font-size: 14px;
+	color: var(--text-normal);
+}
+
+/* Hide scrollbar */
+body.minimalist-hide-scrollbar .markdown-source-view ::-webkit-scrollbar,
+body.minimalist-hide-scrollbar .markdown-preview-view ::-webkit-scrollbar {
+	width: 0 !important;
+	height: 0 !important;
+}
+body.minimalist-hide-scrollbar .cm-scroller {
+	scrollbar-width: none;
+}
+`;
 var READING_LINE_OFFSET = 60;
 var LINK_REGEX = /\[\[(?:[^\]|]+\|)?([^\]]+)\]\]|\[([^\]]+)\]\([^)]+\)/g;
 var InlineOutlinePlugin = class extends import_obsidian.Plugin {
@@ -119,12 +168,18 @@ var InlineOutlinePlugin = class extends import_obsidian.Plugin {
   }
   async onload() {
     await this.loadSettings();
-    const style = document.createElement("style");
-    style.id = "inline-outline-styles";
-    style.textContent = STYLES;
-    document.head.appendChild(style);
-    this.register(() => style.remove());
-    this.addSettingTab(new InlineOutlineSettingTab(this.app, this));
+    const outlineStyle = document.createElement("style");
+    outlineStyle.id = "minimalist-outline-styles";
+    outlineStyle.textContent = OUTLINE_STYLES;
+    document.head.appendChild(outlineStyle);
+    this.register(() => outlineStyle.remove());
+    const minimalistStyle = document.createElement("style");
+    minimalistStyle.id = "minimalist-editor-styles";
+    minimalistStyle.textContent = MINIMALIST_STYLES;
+    document.head.appendChild(minimalistStyle);
+    this.register(() => minimalistStyle.remove());
+    this.applyBodyClasses();
+    this.addSettingTab(new MinimalistSettingTab(this.app, this));
     this.addCommand({ id: "toggle-outline", name: "Toggle Inline Outline", callback: () => this.toggle() });
     const refresh = (0, import_obsidian.debounce)(() => this.refresh(), 300, true);
     this.registerEvent(this.app.workspace.on("active-leaf-change", () => setTimeout(() => this.init(), 100)));
@@ -147,6 +202,7 @@ var InlineOutlinePlugin = class extends import_obsidian.Plugin {
       cancelAnimationFrame(this.scrollRAF);
     if (this.resizeRAF)
       cancelAnimationFrame(this.resizeRAF);
+    document.body.classList.remove("minimalist-hide-properties", "minimalist-hide-scrollbar");
   }
   init() {
     this.setupScroll();
@@ -160,14 +216,32 @@ var InlineOutlinePlugin = class extends import_obsidian.Plugin {
   createOutline() {
     var _a;
     (_a = this.outlineEl) == null ? void 0 : _a.remove();
+    if (!this.settings.showOutline)
+      return;
     this.outlineEl = document.createElement("div");
-    this.outlineEl.className = "inline-outline" + (this.settings.minimalStyle ? " minimal-style" : "");
+    this.outlineEl.className = "inline-outline" + (this.settings.minimalOutline ? " minimal-style" : "");
     this.outlineEl.id = "inline-outline";
     document.body.appendChild(this.outlineEl);
   }
+  applyBodyClasses() {
+    document.body.classList.toggle("minimalist-hide-properties", this.settings.hideProperties);
+    document.body.classList.toggle("minimalist-hide-scrollbar", this.settings.hideScrollbar);
+  }
   updateOutlineStyle() {
     var _a;
-    (_a = this.outlineEl) == null ? void 0 : _a.classList.toggle("minimal-style", this.settings.minimalStyle);
+    (_a = this.outlineEl) == null ? void 0 : _a.classList.toggle("minimal-style", this.settings.minimalOutline);
+  }
+  toggleOutlineVisibility() {
+    var _a;
+    if (this.settings.showOutline) {
+      if (!this.outlineEl) {
+        this.createOutline();
+        this.refresh();
+      }
+    } else {
+      (_a = this.outlineEl) == null ? void 0 : _a.remove();
+      this.outlineEl = null;
+    }
   }
   setupScroll() {
     var _a, _b;
@@ -319,24 +393,13 @@ var InlineOutlinePlugin = class extends import_obsidian.Plugin {
     (_a = this.outlineEl) == null ? void 0 : _a.querySelectorAll(".inline-outline-item").forEach(
       (el, i) => el.classList.toggle("active", i === index)
     );
-    if (this.isReading) {
-      const file = this.app.workspace.getActiveFile();
-      if (file) {
-        const headingText = h.text;
-        const leaf = this.app.workspace.getLeaf(false);
-        if (leaf) {
-          this.app.workspace.openLinkText(
-            file.path + "#" + headingText,
-            file.path,
-            false
-          );
-        }
-      }
-    } else {
-      const line = h.position.start.line;
-      const editor = view.editor;
-      editor.setCursor({ line, ch: 0 });
-      editor.scrollIntoView({ from: { line, ch: 0 }, to: { line, ch: 0 } }, true);
+    const file = this.app.workspace.getActiveFile();
+    if (file) {
+      this.app.workspace.openLinkText(
+        file.path + "#" + h.text,
+        file.path,
+        false
+      );
     }
   }
   async loadSettings() {
@@ -346,22 +409,35 @@ var InlineOutlinePlugin = class extends import_obsidian.Plugin {
     await this.saveData(this.settings);
   }
 };
-var InlineOutlineSettingTab = class extends import_obsidian.PluginSettingTab {
+var MinimalistSettingTab = class extends import_obsidian.PluginSettingTab {
   constructor(app, plugin) {
     super(app, plugin);
     this.plugin = plugin;
   }
   display() {
     this.containerEl.empty();
-    this.containerEl.createEl("h2", { text: "Inline Outline Settings" });
-    new import_obsidian.Setting(this.containerEl).setName("Minimal Style").setDesc("Notion-like: positioned higher, smaller lines and text").addToggle((t) => t.setValue(this.plugin.settings.minimalStyle).onChange(async (v) => {
-      this.plugin.settings.minimalStyle = v;
+    this.containerEl.createEl("h2", { text: "The Minimalist Editor" });
+    this.containerEl.createEl("h3", { text: "Inline Outline" });
+    new import_obsidian.Setting(this.containerEl).setName("Show Outline").setDesc("Display the inline outline on the right side of the editor").addToggle((t) => t.setValue(this.plugin.settings.showOutline).onChange(async (v) => {
+      this.plugin.settings.showOutline = v;
+      await this.plugin.saveSettings();
+      this.plugin.toggleOutlineVisibility();
+    }));
+    new import_obsidian.Setting(this.containerEl).setName("Minimal Style").setDesc("Notion-like: positioned higher, smaller lines and text").addToggle((t) => t.setValue(this.plugin.settings.minimalOutline).onChange(async (v) => {
+      this.plugin.settings.minimalOutline = v;
       await this.plugin.saveSettings();
       this.plugin.updateOutlineStyle();
     }));
-    new import_obsidian.Setting(this.containerEl).setName("Auto Update").setDesc("Automatically update outline when content changes").addToggle((t) => t.setValue(this.plugin.settings.autoUpdate).onChange(async (v) => {
-      this.plugin.settings.autoUpdate = v;
+    this.containerEl.createEl("h3", { text: "Distraction-free" });
+    new import_obsidian.Setting(this.containerEl).setName("Hide Properties").setDesc("Hide the properties/metadata panel from the editor (still visible in sidebar)").addToggle((t) => t.setValue(this.plugin.settings.hideProperties).onChange(async (v) => {
+      this.plugin.settings.hideProperties = v;
       await this.plugin.saveSettings();
+      this.plugin.applyBodyClasses();
+    }));
+    new import_obsidian.Setting(this.containerEl).setName("Hide Scrollbar").setDesc("Hide the scrollbar for a cleaner appearance").addToggle((t) => t.setValue(this.plugin.settings.hideScrollbar).onChange(async (v) => {
+      this.plugin.settings.hideScrollbar = v;
+      await this.plugin.saveSettings();
+      this.plugin.applyBodyClasses();
     }));
   }
 };
