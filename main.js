@@ -34,12 +34,15 @@ var DEFAULT_SETTINGS = {
   showOutline: true,
   minimalOutline: false,
   hideProperties: true,
-  hideScrollbar: false
+  hideScrollbar: false,
+  focusMode: false,
+  focusDimOpacity: 30
 };
 
 // src/main.ts
 var OUTLINE_STYLES = `
-.inline-outline{position:fixed;right:24px;top:50%;transform:translateY(-50%);z-index:10;display:flex;flex-direction:column;align-items:flex-end;gap:6px;padding:12px 8px;border-radius:6px;background:transparent;max-height:70vh;overflow-y:auto;overflow-x:hidden}
+:root{--outline-right-offset:24px;--outline-max-width:200px;--outline-breakpoint:900px}
+.inline-outline{position:fixed;right:var(--outline-right-offset);top:50%;transform:translateY(-50%);z-index:10;display:flex;flex-direction:column;align-items:flex-end;gap:6px;padding:12px 8px;border-radius:6px;background:transparent;max-height:70vh;overflow-y:auto;overflow-x:hidden}
 .inline-outline:hover{background:var(--background-primary);box-shadow:0 2px 12px rgba(0,0,0,.1);padding:12px 16px 12px 12px;align-items:flex-start}
 .inline-outline-item{display:flex;align-items:center;justify-content:flex-end;cursor:pointer;padding:3px 0;width:100%}
 .inline-outline:hover .inline-outline-item{justify-content:flex-start}
@@ -53,7 +56,7 @@ var OUTLINE_STYLES = `
 .inline-outline-level-5 .inline-outline-line{width:8px}
 .inline-outline-level-6 .inline-outline-line{width:6px}
 .inline-outline:hover .inline-outline-line{display:none}
-.inline-outline-text{font-size:12px;line-height:1.4;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:none;max-width:200px}
+.inline-outline-text{font-size:12px;line-height:1.4;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:none;max-width:var(--outline-max-width)}
 .inline-outline:hover .inline-outline-text{display:block}
 .inline-outline-item:hover .inline-outline-text{color:var(--text-normal)}
 .inline-outline-item.active .inline-outline-text{color:var(--text-accent);font-weight:500}
@@ -143,6 +146,66 @@ body.minimalist-hide-scrollbar .cm-scroller {
 	scrollbar-width: none;
 }
 `;
+var FOCUS_MODE_STYLES = `
+/* Focus Mode - Edit Mode (CodeMirror) */
+body.minimalist-focus-mode .markdown-source-view.mod-cm6 .cm-content > .cm-line,
+body.minimalist-focus-mode .markdown-source-view.mod-cm6 .cm-content > .cm-embed-block,
+body.minimalist-focus-mode .markdown-source-view.mod-cm6 .cm-content > .HyperMD-list-line {
+	opacity: var(--focus-dim-opacity, 0.3);
+	transition: opacity 0.12s ease-out;
+}
+
+/* Active line in edit mode - use Obsidian's native active line detection */
+body.minimalist-focus-mode .markdown-source-view.mod-cm6 .cm-content > .cm-active,
+body.minimalist-focus-mode .markdown-source-view.mod-cm6 .cm-content > .cm-line.cm-active,
+body.minimalist-focus-mode .markdown-source-view.mod-cm6 .cm-content > .cm-focus-active {
+	opacity: 1 !important;
+}
+
+/* Adjacent lines for smoother transition */
+body.minimalist-focus-mode .markdown-source-view.mod-cm6 .cm-content > .cm-focus-adjacent {
+	opacity: calc(var(--focus-dim-opacity, 0.3) + 0.3);
+}
+
+/* Focus Mode - Reading/Preview Mode */
+body.minimalist-focus-mode .markdown-preview-view .markdown-preview-sizer > div,
+body.minimalist-focus-mode .markdown-preview-view .markdown-preview-sizer > p,
+body.minimalist-focus-mode .markdown-preview-view .markdown-preview-sizer > h1,
+body.minimalist-focus-mode .markdown-preview-view .markdown-preview-sizer > h2,
+body.minimalist-focus-mode .markdown-preview-view .markdown-preview-sizer > h3,
+body.minimalist-focus-mode .markdown-preview-view .markdown-preview-sizer > h4,
+body.minimalist-focus-mode .markdown-preview-view .markdown-preview-sizer > h5,
+body.minimalist-focus-mode .markdown-preview-view .markdown-preview-sizer > h6,
+body.minimalist-focus-mode .markdown-preview-view .markdown-preview-sizer > ul,
+body.minimalist-focus-mode .markdown-preview-view .markdown-preview-sizer > ol,
+body.minimalist-focus-mode .markdown-preview-view .markdown-preview-sizer > blockquote,
+body.minimalist-focus-mode .markdown-preview-view .markdown-preview-sizer > pre,
+body.minimalist-focus-mode .markdown-preview-view .markdown-preview-sizer > table,
+body.minimalist-focus-mode .markdown-preview-view .markdown-preview-sizer > hr {
+	opacity: var(--focus-dim-opacity, 0.3);
+	transition: opacity 0.12s ease-out;
+}
+
+body.minimalist-focus-mode .markdown-preview-view .markdown-preview-sizer > .focus-active {
+	opacity: 1 !important;
+}
+
+body.minimalist-focus-mode .markdown-preview-view .markdown-preview-sizer > .focus-adjacent {
+	opacity: calc(var(--focus-dim-opacity, 0.3) + 0.3);
+}
+
+/* Ensure code blocks and embeds are also handled */
+body.minimalist-focus-mode .markdown-preview-view .markdown-preview-sizer > .markdown-embed,
+body.minimalist-focus-mode .markdown-preview-view .markdown-preview-sizer > .internal-embed {
+	opacity: var(--focus-dim-opacity, 0.3);
+	transition: opacity 0.12s ease-out;
+}
+
+body.minimalist-focus-mode .markdown-preview-view .markdown-preview-sizer > .markdown-embed.focus-active,
+body.minimalist-focus-mode .markdown-preview-view .markdown-preview-sizer > .internal-embed.focus-active {
+	opacity: 1 !important;
+}
+`;
 var READING_LINE_OFFSET = 60;
 var LINK_REGEX = /\[\[(?:[^\]|]+\|)?([^\]]+)\]\]|\[([^\]]+)\]\([^)]+\)/g;
 var InlineOutlinePlugin = class extends import_obsidian.Plugin {
@@ -152,19 +215,20 @@ var InlineOutlinePlugin = class extends import_obsidian.Plugin {
     this.activeIndex = -1;
     this.headings = [];
     this.headingTexts = [];
-    // Cached normalized texts
+    this.outlineItems = [];
     this.scrollContainer = null;
     this.isReading = false;
     this.scrollRAF = null;
     this.resizeRAF = null;
-    this.onScroll = () => {
-      if (this.scrollRAF)
-        return;
-      this.scrollRAF = requestAnimationFrame(() => {
-        this.scrollRAF = null;
-        this.updateActive();
-      });
-    };
+    this.focusRAF = null;
+    this.sidebarObserver = null;
+    this.scrollHandler = null;
+    // Focus mode state
+    this.focusStyleEl = null;
+    this.lastFocusLine = -1;
+    this.lastReadingFocusIdx = -1;
+    this.focusUpdateDebounced = null;
+    this.editorEventCleanup = null;
   }
   async onload() {
     await this.loadSettings();
@@ -179,10 +243,19 @@ var InlineOutlinePlugin = class extends import_obsidian.Plugin {
     document.head.appendChild(minimalistStyle);
     this.register(() => minimalistStyle.remove());
     this.applyBodyClasses();
+    this.updateFocusOpacity();
+    if (this.settings.focusMode) {
+      this.enableFocusMode();
+    }
     this.addSettingTab(new MinimalistSettingTab(this.app, this));
     this.addCommand({ id: "toggle-outline", name: "Toggle Inline Outline", callback: () => this.toggle() });
+    this.addCommand({ id: "toggle-focus-mode", name: "Toggle Focus Mode", callback: () => this.toggleFocusMode() });
     const refresh = (0, import_obsidian.debounce)(() => this.refresh(), 300, true);
-    this.registerEvent(this.app.workspace.on("active-leaf-change", () => setTimeout(() => this.init(), 100)));
+    this.focusUpdateDebounced = (0, import_obsidian.debounce)(() => this.updateFocusModeImmediate(), 16, true);
+    this.registerEvent(this.app.workspace.on("active-leaf-change", () => {
+      this.cleanupEditorEvents();
+      setTimeout(() => this.init(), 100);
+    }));
     this.registerEvent(this.app.workspace.on("layout-change", () => {
       this.updatePosition();
       setTimeout(() => this.init(), 100);
@@ -195,23 +268,70 @@ var InlineOutlinePlugin = class extends import_obsidian.Plugin {
     });
   }
   onunload() {
-    var _a, _b;
-    (_a = this.scrollContainer) == null ? void 0 : _a.removeEventListener("scroll", this.onScroll);
-    (_b = this.outlineEl) == null ? void 0 : _b.remove();
+    var _a, _b, _c;
+    this.cleanupEditorEvents();
+    if (this.scrollHandler && this.scrollContainer) {
+      this.scrollContainer.removeEventListener("scroll", this.scrollHandler);
+    }
+    (_a = this.outlineEl) == null ? void 0 : _a.remove();
     if (this.scrollRAF)
       cancelAnimationFrame(this.scrollRAF);
     if (this.resizeRAF)
       cancelAnimationFrame(this.resizeRAF);
-    document.body.classList.remove("minimalist-hide-properties", "minimalist-hide-scrollbar");
+    if (this.focusRAF)
+      cancelAnimationFrame(this.focusRAF);
+    (_b = this.sidebarObserver) == null ? void 0 : _b.disconnect();
+    this.sidebarObserver = null;
+    (_c = this.focusStyleEl) == null ? void 0 : _c.remove();
+    this.focusStyleEl = null;
+    document.body.classList.remove("minimalist-hide-properties", "minimalist-hide-scrollbar", "minimalist-focus-mode");
+    this.clearFocusClasses();
+  }
+  cleanupEditorEvents() {
+    if (this.editorEventCleanup) {
+      this.editorEventCleanup();
+      this.editorEventCleanup = null;
+    }
   }
   init() {
     this.setupScroll();
     this.refresh();
+    if (this.settings.focusMode) {
+      this.setupFocusModeListeners();
+      setTimeout(() => this.updateFocusModeImmediate(), 50);
+    }
   }
   toggle() {
     if (this.outlineEl) {
       this.outlineEl.style.display = this.outlineEl.style.display === "none" ? "" : "none";
     }
+  }
+  toggleFocusMode() {
+    this.settings.focusMode = !this.settings.focusMode;
+    this.saveSettings();
+    if (this.settings.focusMode) {
+      this.enableFocusMode();
+      this.setupFocusModeListeners();
+      this.updateFocusModeImmediate();
+    } else {
+      this.disableFocusMode();
+    }
+  }
+  enableFocusMode() {
+    document.body.classList.add("minimalist-focus-mode");
+    if (!this.focusStyleEl) {
+      this.focusStyleEl = document.createElement("style");
+      this.focusStyleEl.id = "minimalist-focus-styles";
+      this.focusStyleEl.textContent = FOCUS_MODE_STYLES;
+      document.head.appendChild(this.focusStyleEl);
+    }
+  }
+  disableFocusMode() {
+    document.body.classList.remove("minimalist-focus-mode");
+    this.clearFocusClasses();
+    this.cleanupEditorEvents();
+    this.lastFocusLine = -1;
+    this.lastReadingFocusIdx = -1;
   }
   createOutline() {
     var _a;
@@ -226,6 +346,10 @@ var InlineOutlinePlugin = class extends import_obsidian.Plugin {
   applyBodyClasses() {
     document.body.classList.toggle("minimalist-hide-properties", this.settings.hideProperties);
     document.body.classList.toggle("minimalist-hide-scrollbar", this.settings.hideScrollbar);
+    document.body.classList.toggle("minimalist-focus-mode", this.settings.focusMode);
+  }
+  updateFocusOpacity() {
+    document.documentElement.style.setProperty("--focus-dim-opacity", String(this.settings.focusDimOpacity / 100));
   }
   updateOutlineStyle() {
     var _a;
@@ -244,30 +368,85 @@ var InlineOutlinePlugin = class extends import_obsidian.Plugin {
     }
   }
   setupScroll() {
-    var _a, _b;
-    (_a = this.scrollContainer) == null ? void 0 : _a.removeEventListener("scroll", this.onScroll);
+    var _a;
+    if (this.scrollHandler && this.scrollContainer) {
+      this.scrollContainer.removeEventListener("scroll", this.scrollHandler);
+    }
     const view = this.app.workspace.getActiveViewOfType(import_obsidian.MarkdownView);
     if (!view) {
       this.scrollContainer = null;
+      this.scrollHandler = null;
       return;
     }
     this.isReading = view.getMode() === "preview";
     const selector = this.isReading ? ".markdown-preview-view" : ".cm-scroller";
     this.scrollContainer = view.contentEl.querySelector(selector);
-    (_b = this.scrollContainer) == null ? void 0 : _b.addEventListener("scroll", this.onScroll, { passive: true });
+    this.scrollHandler = () => {
+      if (this.scrollRAF)
+        return;
+      this.scrollRAF = requestAnimationFrame(() => {
+        var _a2;
+        this.scrollRAF = null;
+        this.updateActive();
+        if (this.settings.focusMode && this.isReading) {
+          (_a2 = this.focusUpdateDebounced) == null ? void 0 : _a2.call(this);
+        }
+      });
+    };
+    (_a = this.scrollContainer) == null ? void 0 : _a.addEventListener("scroll", this.scrollHandler, { passive: true });
+  }
+  setupFocusModeListeners() {
+    if (!this.settings.focusMode)
+      return;
+    const view = this.app.workspace.getActiveViewOfType(import_obsidian.MarkdownView);
+    if (!view)
+      return;
+    this.cleanupEditorEvents();
+    if (!this.isReading) {
+      const editor = view.editor;
+      const cm = editor == null ? void 0 : editor.cm;
+      if (cm) {
+        const contentDOM = cm.contentDOM;
+        const selectionHandler = () => {
+          if (this.focusRAF)
+            return;
+          this.focusRAF = requestAnimationFrame(() => {
+            this.focusRAF = null;
+            this.updateEditModeFocus(view);
+          });
+        };
+        document.addEventListener("selectionchange", selectionHandler);
+        const keyHandler = () => {
+          if (this.focusRAF)
+            return;
+          this.focusRAF = requestAnimationFrame(() => {
+            this.focusRAF = null;
+            this.updateEditModeFocus(view);
+          });
+        };
+        contentDOM.addEventListener("keyup", keyHandler, { passive: true });
+        contentDOM.addEventListener("click", keyHandler, { passive: true });
+        this.editorEventCleanup = () => {
+          document.removeEventListener("selectionchange", selectionHandler);
+          contentDOM.removeEventListener("keyup", keyHandler);
+          contentDOM.removeEventListener("click", keyHandler);
+        };
+      }
+    }
   }
   observeSidebar() {
     const sidebar = document.querySelector(".mod-right-split");
     if (!sidebar)
       return;
-    new ResizeObserver(() => {
+    this.sidebarObserver = new ResizeObserver(() => {
       if (this.resizeRAF)
         return;
       this.resizeRAF = requestAnimationFrame(() => {
         this.resizeRAF = null;
         this.updatePosition();
       });
-    }).observe(sidebar);
+    });
+    this.sidebarObserver.observe(sidebar);
   }
   updatePosition() {
     if (!this.outlineEl)
@@ -300,7 +479,8 @@ var InlineOutlinePlugin = class extends import_obsidian.Plugin {
   render() {
     if (!this.outlineEl)
       return;
-    this.outlineEl.innerHTML = "";
+    this.outlineEl.empty();
+    this.outlineItems = [];
     if (!this.headings.length) {
       const empty = document.createElement("div");
       empty.className = "inline-outline-empty";
@@ -312,9 +492,16 @@ var InlineOutlinePlugin = class extends import_obsidian.Plugin {
     this.headings.forEach((h, i) => {
       const item = document.createElement("div");
       item.className = `inline-outline-item inline-outline-level-${h.level}`;
-      item.innerHTML = `<div class="inline-outline-line"></div><span class="inline-outline-text">${this.strip(h.text)}</span>`;
-      item.onclick = () => this.navigate(i);
+      const line = document.createElement("div");
+      line.className = "inline-outline-line";
+      const text = document.createElement("span");
+      text.className = "inline-outline-text";
+      text.textContent = this.strip(h.text);
+      item.appendChild(line);
+      item.appendChild(text);
+      item.addEventListener("click", () => this.navigate(i));
       frag.appendChild(item);
+      this.outlineItems.push(item);
     });
     this.outlineEl.appendChild(frag);
   }
@@ -377,12 +564,10 @@ var InlineOutlinePlugin = class extends import_obsidian.Plugin {
     }
     if (active !== this.activeIndex) {
       this.activeIndex = active;
-      const items = this.outlineEl.querySelectorAll(".inline-outline-item");
-      items.forEach((el, i) => el.classList.toggle("active", i === active));
+      this.outlineItems.forEach((el, i) => el.classList.toggle("active", i === active));
     }
   }
   navigate(index) {
-    var _a;
     const h = this.headings[index];
     if (!h)
       return;
@@ -390,9 +575,7 @@ var InlineOutlinePlugin = class extends import_obsidian.Plugin {
     if (!view)
       return;
     this.activeIndex = index;
-    (_a = this.outlineEl) == null ? void 0 : _a.querySelectorAll(".inline-outline-item").forEach(
-      (el, i) => el.classList.toggle("active", i === index)
-    );
+    this.outlineItems.forEach((el, i) => el.classList.toggle("active", i === index));
     const file = this.app.workspace.getActiveFile();
     if (file) {
       this.app.workspace.openLinkText(
@@ -401,6 +584,168 @@ var InlineOutlinePlugin = class extends import_obsidian.Plugin {
         false
       );
     }
+  }
+  // Focus Mode methods
+  updateFocusModeImmediate() {
+    if (!this.settings.focusMode)
+      return;
+    const view = this.app.workspace.getActiveViewOfType(import_obsidian.MarkdownView);
+    if (!view)
+      return;
+    if (this.isReading) {
+      this.updateReadingModeFocus(view);
+    } else {
+      this.updateEditModeFocus(view);
+    }
+  }
+  updateEditModeFocus(view) {
+    const editor = view.editor;
+    const cm = editor == null ? void 0 : editor.cm;
+    if (!cm)
+      return;
+    const cursor = view.editor.getCursor();
+    const currentLine = cursor.line;
+    if (currentLine === this.lastFocusLine)
+      return;
+    this.lastFocusLine = currentLine;
+    const contentDOM = cm.contentDOM;
+    if (!contentDOM)
+      return;
+    const lineElements = contentDOM.querySelectorAll(":scope > .cm-line, :scope > .cm-embed-block");
+    if (!lineElements.length)
+      return;
+    lineElements.forEach((el) => {
+      el.classList.remove("cm-focus-active", "cm-focus-adjacent");
+    });
+    try {
+      const cursorPos = cm.state.doc.line(currentLine + 1).from;
+      const cursorCoords = cm.coordsAtPos(cursorPos, -1);
+      if (!cursorCoords) {
+        const visibleRanges = cm.visibleRanges;
+        if (visibleRanges.length > 0 && lineElements.length > 0) {
+          if (cursorPos <= visibleRanges[0].from || currentLine === 0) {
+            lineElements[0].classList.add("cm-focus-active");
+            if (lineElements.length > 1) {
+              lineElements[1].classList.add("cm-focus-adjacent");
+            }
+          }
+        }
+        return;
+      }
+      const scroller = view.contentEl.querySelector(".cm-scroller");
+      const scrollerRect = scroller == null ? void 0 : scroller.getBoundingClientRect();
+      if (!scrollerRect)
+        return;
+      const cursorRelTop = cursorCoords.top - scrollerRect.top;
+      let activeIdx = -1;
+      let minDist = Infinity;
+      lineElements.forEach((el, idx) => {
+        const rect = el.getBoundingClientRect();
+        const elRelTop = rect.top - scrollerRect.top;
+        const dist = Math.abs(elRelTop - cursorRelTop);
+        if (dist < minDist) {
+          minDist = dist;
+          activeIdx = idx;
+        }
+      });
+      if (activeIdx >= 0) {
+        lineElements[activeIdx].classList.add("cm-focus-active");
+        if (activeIdx > 0) {
+          lineElements[activeIdx - 1].classList.add("cm-focus-adjacent");
+        }
+        if (activeIdx < lineElements.length - 1) {
+          lineElements[activeIdx + 1].classList.add("cm-focus-adjacent");
+        }
+      } else if (currentLine === 0 && lineElements.length > 0) {
+        lineElements[0].classList.add("cm-focus-active");
+        if (lineElements.length > 1) {
+          lineElements[1].classList.add("cm-focus-adjacent");
+        }
+      }
+    } catch (e) {
+      if (currentLine === 0 && lineElements.length > 0) {
+        lineElements[0].classList.add("cm-focus-active");
+        if (lineElements.length > 1) {
+          lineElements[1].classList.add("cm-focus-adjacent");
+        }
+      }
+    }
+  }
+  updateReadingModeFocus(view) {
+    const preview = view.contentEl.querySelector(".markdown-preview-view");
+    const sizer = preview == null ? void 0 : preview.querySelector(".markdown-preview-sizer");
+    if (!sizer || !preview)
+      return;
+    const selector = ":scope > div, :scope > p, :scope > h1, :scope > h2, :scope > h3, :scope > h4, :scope > h5, :scope > h6, :scope > ul, :scope > ol, :scope > blockquote, :scope > pre, :scope > table, :scope > hr, :scope > .markdown-embed, :scope > .internal-embed";
+    const children = Array.from(sizer.querySelectorAll(selector));
+    if (!children.length)
+      return;
+    const previewRect = preview.getBoundingClientRect();
+    const viewportTop = previewRect.top;
+    const viewportBottom = previewRect.bottom;
+    const focusLine = viewportTop + Math.min(150, (viewportBottom - viewportTop) * 0.25);
+    let activeIdx = 0;
+    let lastAboveIdx = -1;
+    let firstVisibleIdx = -1;
+    for (let idx = 0; idx < children.length; idx++) {
+      const child = children[idx];
+      const rect = child.getBoundingClientRect();
+      if (rect.height === 0)
+        continue;
+      const elementTop = rect.top;
+      const elementBottom = rect.bottom;
+      if (firstVisibleIdx === -1 && elementBottom > viewportTop && elementTop < viewportBottom) {
+        firstVisibleIdx = idx;
+      }
+      if (elementTop <= focusLine) {
+        lastAboveIdx = idx;
+      }
+      if (elementTop <= focusLine && elementBottom >= focusLine) {
+        activeIdx = idx;
+        break;
+      }
+      if (elementTop > focusLine) {
+        activeIdx = lastAboveIdx >= 0 ? lastAboveIdx : idx;
+        break;
+      }
+      if (idx === children.length - 1) {
+        activeIdx = lastAboveIdx >= 0 ? lastAboveIdx : 0;
+      }
+    }
+    if (activeIdx === 0 && lastAboveIdx === -1 && firstVisibleIdx >= 0) {
+      activeIdx = firstVisibleIdx;
+    }
+    if (preview.scrollTop <= 10 && children.length > 0) {
+      activeIdx = 0;
+    }
+    if (activeIdx === this.lastReadingFocusIdx)
+      return;
+    this.lastReadingFocusIdx = activeIdx;
+    children.forEach((child, idx) => {
+      child.classList.remove("focus-active", "focus-adjacent");
+      if (idx === activeIdx) {
+        child.classList.add("focus-active");
+      } else if (Math.abs(idx - activeIdx) === 1) {
+        child.classList.add("focus-adjacent");
+      }
+    });
+  }
+  clearFocusClasses() {
+    const view = this.app.workspace.getActiveViewOfType(import_obsidian.MarkdownView);
+    if (view) {
+      const contentEl = view.contentEl;
+      contentEl.querySelectorAll(".cm-focus-active, .cm-focus-adjacent").forEach((el) => {
+        el.classList.remove("cm-focus-active", "cm-focus-adjacent");
+      });
+      contentEl.querySelectorAll(".focus-active, .focus-adjacent").forEach((el) => {
+        el.classList.remove("focus-active", "focus-adjacent");
+      });
+    }
+    document.querySelectorAll(".cm-focus-active, .cm-focus-adjacent, .focus-active, .focus-adjacent").forEach((el) => {
+      el.classList.remove("cm-focus-active", "cm-focus-adjacent", "focus-active", "focus-adjacent");
+    });
+    this.lastFocusLine = -1;
+    this.lastReadingFocusIdx = -1;
   }
   async loadSettings() {
     this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
@@ -438,6 +783,29 @@ var MinimalistSettingTab = class extends import_obsidian.PluginSettingTab {
       this.plugin.settings.hideScrollbar = v;
       await this.plugin.saveSettings();
       this.plugin.applyBodyClasses();
+    }));
+    this.containerEl.createEl("h3", { text: "Focus Mode" });
+    new import_obsidian.Setting(this.containerEl).setName("Enable Focus Mode").setDesc("Dim content except the current line/paragraph for distraction-free writing").addToggle((t) => t.setValue(this.plugin.settings.focusMode).onChange(async (v) => {
+      this.plugin.settings.focusMode = v;
+      await this.plugin.saveSettings();
+      if (v) {
+        this.plugin.applyBodyClasses();
+        const view = this.plugin.app.workspace.getActiveViewOfType(import_obsidian.MarkdownView);
+        if (view) {
+          setTimeout(() => {
+            this.plugin["enableFocusMode"]();
+            this.plugin["setupFocusModeListeners"]();
+            this.plugin["updateFocusModeImmediate"]();
+          }, 50);
+        }
+      } else {
+        this.plugin["disableFocusMode"]();
+      }
+    }));
+    new import_obsidian.Setting(this.containerEl).setName("Dim Opacity").setDesc("How much to dim unfocused content (lower = more dim)").addSlider((s) => s.setLimits(10, 70, 5).setValue(this.plugin.settings.focusDimOpacity).setDynamicTooltip().onChange(async (v) => {
+      this.plugin.settings.focusDimOpacity = v;
+      await this.plugin.saveSettings();
+      this.plugin.updateFocusOpacity();
     }));
   }
 };

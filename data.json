@@ -1,8 +1,10 @@
 {
   "showOutline": true,
-  "minimalOutline": false,
+  "minimalOutline": true,
   "hideProperties": true,
   "hideScrollbar": true,
+  "focusMode": false,
+  "focusDimOpacity": 20,
   "hideFrontmatter": false,
   "autoUpdate": true,
   "showEmptyState": true,
