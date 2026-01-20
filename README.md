@@ -79,7 +79,7 @@ You can assign custom hotkeys to the commands above in **Settings → Hotkeys**.
 
 ## Compatibility
 
-- Requires Obsidian v0.15.0 or higher
+- Requires Obsidian v1.9.3 or higher
 - Desktop only (Windows, macOS, Linux)
 - Works with both Edit and Reading modes
 
