@@ -1,6 +1,6 @@
 {
   "showOutline": true,
-  "minimalOutline": true,
+  "minimalOutline": false,
   "hideProperties": true,
   "hideScrollbar": true,
   "focusMode": false,

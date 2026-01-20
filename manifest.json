@@ -2,9 +2,10 @@
   "id": "the-minimalist-editor",
   "name": "The Minimalist Editor",
   "version": "1.0.0",
-  "description": "A plugin that provides a minimalist editing experience by hiding unnecessary UI elements. Also follow a Notion-like style for a clean look.",
-  "author": "@litegral",
+  "description": "Distraction-free writing with inline outline, focus mode, and clean UI options. Features a Notion-style hover-to-expand table of contents, line-by-line focus dimming, and the ability to hide properties and scrollbars.",
+  "author": "litegral",
   "authorUrl": "https://github.com/litegral",
+  "fundingUrl": "https://github.com/sponsors/litegral",
   "isDesktopOnly": true,
   "minAppVersion": "0.15.0"
 }

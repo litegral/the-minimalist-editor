@@ -1,7 +1,7 @@
 {
   "name": "minimalist-editor",
   "version": "1.0.0",
-  "description": "Distraction-free editing experience with a Notion-style inline outline",
+  "description": "Distraction-free writing with inline outline, focus mode, and clean UI options. Features a Notion-style hover-to-expand table of contents, line-by-line focus dimming, and the ability to hide properties and scrollbars.",
   "main": "main.js",
   "scripts": {
     "dev": "node esbuild.config.mjs",
@@ -13,7 +13,7 @@
     "navigation",
     "notion"
   ],
-  "author": "Your Name",
+  "author": "litegral",
   "license": "MIT",
   "devDependencies": {
     "@types/node": "^16.11.6",
