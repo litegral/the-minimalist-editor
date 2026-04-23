@@ -1,5 +1,50 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap');
 
+/* ── Variable-font + synthesis guard ─────────────────────────── */
+/*
+  font-synthesis: none  -- never fake bold/italic; synthetic faces have
+                           different metrics than the real variable ones
+  font-optical-sizing   -- lets the variable font tune glyph shapes per size
+  text-rendering        -- optimizeLegibility has a known perf cost in
+                           hot-path editors (re-renders on every keystroke),
+                           so we restrict it to reading/preview containers only
+*/
+.markdown-source-view,
+.markdown-preview-view,
+.cm-editor,
+.cm-content {
+	font-synthesis: none;
+	font-optical-sizing: auto;
+	-webkit-font-smoothing: antialiased;
+}
+
+/* optimizeLegibility only on static reading view, not the live editor */
+.markdown-preview-view,
+.markdown-rendered {
+	text-rendering: optimizeLegibility;
+}
+
+/*
+  Bold layout shift fix:
+  Inter's bold glyphs are physically wider than regular ones. letter-spacing: -0.01em
+  trims back roughly the same space the heavier strokes add, keeping line widths stable.
+  Tune this value if you change font size significantly from Obsidian's default ~16px.
+
+  Consolidating all bold targets into one rule to avoid duplication.
+  (.markdown-rendered is a child of .markdown-preview-view so the preview
+  selector would already cascade, but we list it explicitly for clarity.)
+*/
+.cm-editor .cm-strong,
+.cm-editor .cm-line strong,
+.markdown-source-view strong,
+.markdown-preview-view strong,
+.markdown-rendered strong,
+.markdown-rendered b {
+	font-weight: 700;
+	letter-spacing: -0.01em;
+}
+
+/* ── Root variables ───────────────────────────────────────────── */
 :root {
 	--inline-outline-bg: transparent;
 	--inline-outline-text: var(--text-normal);
@@ -11,9 +56,11 @@
 	--inline-outline-width: 250px;
 	--outline-right-offset: 24px;
 	--outline-max-width: 200px;
+	/* indent step shared between default and minimal variants */
+	--outline-indent-step: 10px;
 }
 
-/* Inline Outline Styles */
+/* ── Inline Outline Styles ────────────────────────────────────── */
 .inline-outline {
 	position: fixed;
 	right: var(--outline-right-offset);
@@ -29,14 +76,20 @@
 	background: transparent;
 	max-height: 70vh;
 	overflow-y: auto;
-	overflow-x: hidden;
+	/* removed overflow-x: hidden -- it was clipping the hover box-shadow */
 }
 
 .inline-outline:hover {
 	background: var(--background-primary);
-	box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+	/*
+	  Use currentColor-based shadow so it adapts to light/dark themes
+	  without a separate .theme-dark override.
+	*/
+	box-shadow: 0 2px 12px color-mix(in srgb, currentColor 10%, transparent);
 	padding: 12px 16px 12px 12px;
 	align-items: flex-start;
+	/* smooth the padding/alignment change */
+	transition: padding 0.15s ease, background 0.15s ease;
 }
 
 .inline-outline-item {
@@ -58,6 +111,7 @@
 	background: var(--text-faint);
 	opacity: 0.5;
 	flex-shrink: 0;
+	transition: background 0.1s ease, opacity 0.1s ease, height 0.1s ease;
 }
 
 .inline-outline-item:hover .inline-outline-line,
@@ -81,6 +135,10 @@
 	display: none;
 }
 
+/*
+  Fix: `display: none` cannot be transitioned -- the text was popping in/out.
+  Replaced with opacity + visibility + max-width so the reveal can animate.
+*/
 .inline-outline-text {
 	font-size: 12px;
 	line-height: 1.4;
@@ -88,12 +146,18 @@
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
-	display: none;
 	max-width: var(--outline-max-width);
+	/* hidden state */
+	opacity: 0;
+	visibility: hidden;
+	max-height: 0;
+	transition: opacity 0.15s ease, visibility 0.15s ease;
 }
 
 .inline-outline:hover .inline-outline-text {
-	display: block;
+	opacity: 1;
+	visibility: visible;
+	max-height: none;
 }
 
 .inline-outline-item:hover .inline-outline-text {
@@ -105,12 +169,16 @@
 	font-weight: 500;
 }
 
+/*
+  Indent levels use calc() so changing --outline-indent-step in :root
+  adjusts all levels at once.
+*/
 .inline-outline:hover .inline-outline-level-1 { padding-left: 0; }
-.inline-outline:hover .inline-outline-level-2 { padding-left: 10px; }
-.inline-outline:hover .inline-outline-level-3 { padding-left: 20px; }
-.inline-outline:hover .inline-outline-level-4 { padding-left: 30px; }
-.inline-outline:hover .inline-outline-level-5 { padding-left: 40px; }
-.inline-outline:hover .inline-outline-level-6 { padding-left: 50px; }
+.inline-outline:hover .inline-outline-level-2 { padding-left: calc(var(--outline-indent-step) * 1); }
+.inline-outline:hover .inline-outline-level-3 { padding-left: calc(var(--outline-indent-step) * 2); }
+.inline-outline:hover .inline-outline-level-4 { padding-left: calc(var(--outline-indent-step) * 3); }
+.inline-outline:hover .inline-outline-level-5 { padding-left: calc(var(--outline-indent-step) * 4); }
+.inline-outline:hover .inline-outline-level-6 { padding-left: calc(var(--outline-indent-step) * 5); }
 
 .inline-outline-level-1 .inline-outline-text {
 	font-weight: 600;
@@ -122,14 +190,17 @@
 }
 
 .inline-outline-empty {
-	display: none;
+	opacity: 0;
+	visibility: hidden;
+	font-size: 11px;
+	white-space: nowrap;
+	transition: opacity 0.15s ease, visibility 0.15s ease;
 }
 
 .inline-outline:hover .inline-outline-empty {
-	display: block;
+	opacity: 1;
+	visibility: visible;
 	color: var(--text-faint);
-	font-size: 11px;
-	white-space: nowrap;
 }
 
 .inline-outline::-webkit-scrollbar { width: 4px; }
@@ -143,13 +214,22 @@
 	.inline-outline { display: none; }
 }
 
+/*
+  Removed separate .theme-dark override -- the color-mix() shadow above
+  already adapts. Only the background needs a dark-theme tweak.
+*/
 .theme-dark .inline-outline:hover {
 	background: var(--background-secondary);
-	box-shadow: 0 2px 16px rgba(0, 0, 0, 0.3);
 }
 
-/* Minimal Style Variant */
+/* ── Minimal Style Variant ────────────────────────────────────── */
+/*
+  Uses a narrower --outline-indent-step scoped to this variant.
+  All 6 indent levels derive from it via calc(), so you only need
+  to change one value to re-space the whole hierarchy.
+*/
 .inline-outline.minimal-style {
+	--outline-indent-step: 8px;
 	top: 120px;
 	transform: none;
 	gap: 4px;
@@ -195,18 +275,13 @@
 	font-weight: 500;
 }
 
-.inline-outline.minimal-style:hover .inline-outline-level-1 { padding-left: 0; }
-.inline-outline.minimal-style:hover .inline-outline-level-2 { padding-left: 8px; }
-.inline-outline.minimal-style:hover .inline-outline-level-3 { padding-left: 16px; }
-.inline-outline.minimal-style:hover .inline-outline-level-4 { padding-left: 24px; }
-.inline-outline.minimal-style:hover .inline-outline-level-5 { padding-left: 32px; }
-.inline-outline.minimal-style:hover .inline-outline-level-6 { padding-left: 40px; }
+/* indent levels inherit from the base rule set via calc(), no overrides needed */
 
 .inline-outline.minimal-style .inline-outline-empty {
 	font-size: 10px;
 }
 
-/* Hide Properties Styles */
+/* ── Hide Properties ──────────────────────────────────────────── */
 body.minimalist-hide-properties .markdown-source-view .metadata-container,
 body.minimalist-hide-properties .markdown-preview-view .metadata-container,
 body.minimalist-hide-properties .cm-line.HyperMD-frontmatter,
@@ -245,7 +320,7 @@ body.minimalist-hide-properties .workspace-leaf-content[data-type="file-properti
 	color: var(--text-normal);
 }
 
-/* Hide Scrollbar Styles */
+/* ── Hide Scrollbar ───────────────────────────────────────────── */
 body.minimalist-hide-scrollbar .markdown-source-view ::-webkit-scrollbar,
 body.minimalist-hide-scrollbar .markdown-preview-view ::-webkit-scrollbar {
 	width: 0 !important;
@@ -256,30 +331,30 @@ body.minimalist-hide-scrollbar .cm-scroller {
 	scrollbar-width: none;
 }
 
-/* Focus Mode Styles */
-body.minimalist-focus-mode .markdown-source-view.mod-cm6 .cm-content > * {
+/* ── Focus Mode ───────────────────────────────────────────────── */
+/*
+  will-change: opacity tells the compositor to promote these elements to
+  their own layer, avoiding full repaints on every keystroke in focus mode.
+  Shared transition defined once via a custom property.
+*/
+:root {
+	--focus-transition: opacity 0.12s ease-out;
+}
+
+body.minimalist-focus-mode .markdown-source-view.mod-cm6 .cm-content > *,
+body.minimalist-focus-mode .markdown-preview-view .markdown-preview-sizer > * {
 	opacity: var(--focus-dim-opacity, 0.3);
-	transition: opacity 0.12s ease-out;
+	transition: var(--focus-transition);
+	will-change: opacity;
 }
 
 body.minimalist-focus-mode .markdown-source-view.mod-cm6 .cm-content > .cm-active,
-body.minimalist-focus-mode .markdown-source-view.mod-cm6 .cm-content > .cm-focus-active {
-	opacity: 1 !important;
-}
-
-body.minimalist-focus-mode .markdown-source-view.mod-cm6 .cm-content > .cm-focus-adjacent {
-	opacity: calc(var(--focus-dim-opacity, 0.3) + 0.3);
-}
-
-body.minimalist-focus-mode .markdown-preview-view .markdown-preview-sizer > * {
-	opacity: var(--focus-dim-opacity, 0.3);
-	transition: opacity 0.12s ease-out;
-}
-
+body.minimalist-focus-mode .markdown-source-view.mod-cm6 .cm-content > .cm-focus-active,
 body.minimalist-focus-mode .markdown-preview-view .markdown-preview-sizer > .focus-active {
-	opacity: 1 !important;
+	opacity: 1;
 }
 
+body.minimalist-focus-mode .markdown-source-view.mod-cm6 .cm-content > .cm-focus-adjacent,
 body.minimalist-focus-mode .markdown-preview-view .markdown-preview-sizer > .focus-adjacent {
 	opacity: calc(var(--focus-dim-opacity, 0.3) + 0.3);
 }
