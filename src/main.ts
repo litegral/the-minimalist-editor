@@ -43,6 +43,27 @@ export default class InlineOutlinePlugin extends Plugin {
 		this.registerEvent(this.app.workspace.on('layout-change', () => { this.updatePosition(); setTimeout(() => this.init(), 100); }));
 		this.registerEvent(this.app.metadataCache.on('changed', refresh));
 
+		// --- Auto-Hide UI Logic (Notion Style) ---
+		// 1. Wake up the UI when the mouse moves anywhere
+		this.registerDomEvent(document, 'mousemove', () => {
+			if (this.settings.autoHideUI && document.body.classList.contains('zen-ui-hidden')) {
+				document.body.classList.remove('zen-ui-hidden');
+			}
+		});
+
+		// 2. Hide the UI when typing starts inside the editor
+		this.registerDomEvent(document, 'keydown', (evt: KeyboardEvent) => {
+			if (!this.settings.autoHideUI) return;
+			
+			const target = evt.target as HTMLElement;
+			if (target && target.closest('.cm-editor')) {
+				// Don't hide if pressing modifier keys by themselves
+				if (['Control', 'Shift', 'Meta', 'Alt', 'CapsLock', 'Tab'].includes(evt.key)) return;
+				document.body.classList.add('zen-ui-hidden');
+			}
+		});
+		// ------------------------------------------
+
 		this.app.workspace.onLayoutReady(() => {
 			this.createOutline();
 			this.observeSidebar();
@@ -55,7 +76,14 @@ export default class InlineOutlinePlugin extends Plugin {
 		this.outlineEl?.remove();
 		[this.scrollRAF, this.resizeRAF, this.focusRAF].forEach(r => r && cancelAnimationFrame(r));
 		this.sidebarObserver?.disconnect();
-		document.body.classList.remove('minimalist-hide-properties', 'minimalist-hide-scrollbar', 'minimalist-focus-mode');
+		
+		// Clean up all custom classes
+		document.body.classList.remove(
+			'minimalist-hide-properties', 
+			'minimalist-hide-scrollbar', 
+			'minimalist-focus-mode',
+			'zen-ui-hidden'
+		);
 		this.clearFocusClasses();
 	}
 
@@ -140,6 +168,11 @@ export default class InlineOutlinePlugin extends Plugin {
 		classList.toggle('minimalist-hide-properties', this.settings.hideProperties);
 		classList.toggle('minimalist-hide-scrollbar', this.settings.hideScrollbar);
 		classList.toggle('minimalist-focus-mode', this.settings.focusMode);
+		
+		// If turned off, ensure the UI comes back immediately
+		if (!this.settings.autoHideUI) {
+			classList.remove('zen-ui-hidden');
+		}
 	}
 
 	updateFocusOpacity() {
@@ -217,7 +250,6 @@ export default class InlineOutlinePlugin extends Plugin {
 		let active = 0;
 
 		if (atTop) {
-			// At top of document, always highlight first heading
 			active = 0;
 		} else if (this.isReading) {
 			const view = this.getView();
@@ -366,6 +398,7 @@ class MinimalistSettingTab extends PluginSettingTab {
 			['Distraction-free', [
 				['Hide properties', 'Hide properties/metadata from editor (visible in sidebar)', 'hideProperties', () => this.plugin.applyBodyClasses()],
 				['Hide scrollbar', 'Hide scrollbar for cleaner appearance', 'hideScrollbar', () => this.plugin.applyBodyClasses()],
+				['Auto-hide UI', 'Hide titlebar and tabs when typing (Notion-style)', 'autoHideUI', () => this.plugin.applyBodyClasses()], // Added toggle here!
 			]],
 			['Focus mode', [
 				['Enable focus mode', 'Dim content except current line/paragraph', 'focusMode', () => {

@@ -35,6 +35,8 @@ var DEFAULT_SETTINGS = {
   minimalOutline: false,
   hideProperties: true,
   hideScrollbar: false,
+  autoHideUI: false,
+  // Defaulting to false so it doesn't surprise users
   focusMode: false,
   focusDimOpacity: 30
 };
@@ -77,6 +79,21 @@ var InlineOutlinePlugin = class extends import_obsidian.Plugin {
       setTimeout(() => this.init(), 100);
     }));
     this.registerEvent(this.app.metadataCache.on("changed", refresh));
+    this.registerDomEvent(document, "mousemove", () => {
+      if (this.settings.autoHideUI && document.body.classList.contains("zen-ui-hidden")) {
+        document.body.classList.remove("zen-ui-hidden");
+      }
+    });
+    this.registerDomEvent(document, "keydown", (evt) => {
+      if (!this.settings.autoHideUI)
+        return;
+      const target = evt.target;
+      if (target && target.closest(".cm-editor")) {
+        if (["Control", "Shift", "Meta", "Alt", "CapsLock", "Tab"].includes(evt.key))
+          return;
+        document.body.classList.add("zen-ui-hidden");
+      }
+    });
     this.app.workspace.onLayoutReady(() => {
       this.createOutline();
       this.observeSidebar();
@@ -89,7 +106,12 @@ var InlineOutlinePlugin = class extends import_obsidian.Plugin {
     (_a = this.outlineEl) == null ? void 0 : _a.remove();
     [this.scrollRAF, this.resizeRAF, this.focusRAF].forEach((r) => r && cancelAnimationFrame(r));
     (_b = this.sidebarObserver) == null ? void 0 : _b.disconnect();
-    document.body.classList.remove("minimalist-hide-properties", "minimalist-hide-scrollbar", "minimalist-focus-mode");
+    document.body.classList.remove(
+      "minimalist-hide-properties",
+      "minimalist-hide-scrollbar",
+      "minimalist-focus-mode",
+      "zen-ui-hidden"
+    );
     this.clearFocusClasses();
   }
   cleanup() {
@@ -179,6 +201,9 @@ var InlineOutlinePlugin = class extends import_obsidian.Plugin {
     classList.toggle("minimalist-hide-properties", this.settings.hideProperties);
     classList.toggle("minimalist-hide-scrollbar", this.settings.hideScrollbar);
     classList.toggle("minimalist-focus-mode", this.settings.focusMode);
+    if (!this.settings.autoHideUI) {
+      classList.remove("zen-ui-hidden");
+    }
   }
   updateFocusOpacity() {
     document.documentElement.style.setProperty("--focus-dim-opacity", String(this.settings.focusDimOpacity / 100));
@@ -432,7 +457,9 @@ var MinimalistSettingTab = class extends import_obsidian.PluginSettingTab {
       ]],
       ["Distraction-free", [
         ["Hide properties", "Hide properties/metadata from editor (visible in sidebar)", "hideProperties", () => this.plugin.applyBodyClasses()],
-        ["Hide scrollbar", "Hide scrollbar for cleaner appearance", "hideScrollbar", () => this.plugin.applyBodyClasses()]
+        ["Hide scrollbar", "Hide scrollbar for cleaner appearance", "hideScrollbar", () => this.plugin.applyBodyClasses()],
+        ["Auto-hide UI", "Hide titlebar and tabs when typing (Notion-style)", "autoHideUI", () => this.plugin.applyBodyClasses()]
+        // Added toggle here!
       ]],
       ["Focus mode", [
         ["Enable focus mode", "Dim content except current line/paragraph", "focusMode", () => {
