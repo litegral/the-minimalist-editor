@@ -63,6 +63,7 @@ var InlineOutlinePlugin = class extends import_obsidian.Plugin {
     this.targetFlashObserver = null;
     this.targetFlashFocusCleanup = null;
     this.targetFlashReturnGuardTimer = null;
+    this.targetFlashSuppressTimers = [];
     this.shouldClearTargetFlashOnFocus = false;
     this.isReading = false;
     this.lastFocusLine = -1;
@@ -95,6 +96,7 @@ var InlineOutlinePlugin = class extends import_obsidian.Plugin {
       if (!document.hidden)
         this.clearTargetFlashOnWindowReturn();
     });
+    this.registerDomEvent(document, "pointerdown", (evt) => this.clearTargetFlashBeforeInteraction(evt), { capture: true });
     this.registerDomEvent(document, "mousemove", () => {
       if (this.settings.autoHideUI && document.body.classList.contains("zen-ui-hidden")) {
         document.body.classList.remove("zen-ui-hidden");
@@ -127,6 +129,7 @@ var InlineOutlinePlugin = class extends import_obsidian.Plugin {
       window.clearTimeout(this.targetFlashRemovalTimer);
     if (this.targetFlashReturnGuardTimer)
       window.clearTimeout(this.targetFlashReturnGuardTimer);
+    this.targetFlashSuppressTimers.forEach((timer) => window.clearTimeout(timer));
     (_b = this.targetFlashObserver) == null ? void 0 : _b.disconnect();
     (_c = this.targetFlashFocusCleanup) == null ? void 0 : _c.call(this);
     (_d = this.sidebarObserver) == null ? void 0 : _d.disconnect();
@@ -195,45 +198,51 @@ var InlineOutlinePlugin = class extends import_obsidian.Plugin {
     var _a, _b;
     return (_b = (_a = view.editor) == null ? void 0 : _a.cm) != null ? _b : null;
   }
-  clearNavigationSelection() {
-    var _a;
-    (_a = window.getSelection()) == null ? void 0 : _a.removeAllRanges();
-    const view = this.getView();
-    if (!view || this.isReading)
-      return;
-    try {
-      const cursor = view.editor.getCursor("from");
-      view.editor.setSelection(cursor, cursor);
-      view.editor.setCursor(cursor);
-    } catch (e) {
-    }
-  }
   clearObsidianTargetFlash() {
     document.querySelectorAll(".is-flashing, .minimalist-flash-fading").forEach((el) => {
       el.classList.remove("is-flashing", "minimalist-flash-fading");
     });
   }
   clearNavigationArtifacts() {
-    this.clearNavigationSelection();
     this.clearObsidianTargetFlash();
   }
-  suppressTargetFlashBriefly() {
+  cancelTargetFlashSuppression() {
     if (this.targetFlashReturnGuardTimer)
       window.clearTimeout(this.targetFlashReturnGuardTimer);
+    this.targetFlashReturnGuardTimer = null;
+    this.targetFlashSuppressTimers.forEach((timer) => window.clearTimeout(timer));
+    this.targetFlashSuppressTimers = [];
+    document.body.classList.remove("minimalist-suppress-target-flash");
+  }
+  queueTargetFlashSuppressClear(delay) {
+    const timer = window.setTimeout(() => {
+      this.clearNavigationArtifacts();
+      this.targetFlashSuppressTimers = this.targetFlashSuppressTimers.filter((active) => active !== timer);
+    }, delay);
+    this.targetFlashSuppressTimers.push(timer);
+  }
+  suppressTargetFlashBriefly() {
+    this.cancelTargetFlashSuppression();
     document.body.classList.add("minimalist-suppress-target-flash");
     this.clearNavigationArtifacts();
-    window.setTimeout(() => this.clearNavigationArtifacts(), 50);
-    window.setTimeout(() => this.clearNavigationArtifacts(), 200);
-    window.setTimeout(() => this.clearNavigationArtifacts(), 700);
-    window.setTimeout(() => this.clearNavigationArtifacts(), 1200);
+    [50, 200, 700, 1200].forEach((delay) => this.queueTargetFlashSuppressClear(delay));
     this.targetFlashReturnGuardTimer = window.setTimeout(() => {
       this.clearNavigationArtifacts();
       document.body.classList.remove("minimalist-suppress-target-flash");
+      this.shouldClearTargetFlashOnFocus = false;
       this.targetFlashReturnGuardTimer = null;
     }, TARGET_FLASH_RETURN_GUARD_MS);
   }
   clearTargetFlashOnWindowReturn() {
     if (!this.shouldClearTargetFlashOnFocus)
+      return;
+    this.suppressTargetFlashBriefly();
+  }
+  clearTargetFlashBeforeInteraction(evt) {
+    if (!this.shouldClearTargetFlashOnFocus)
+      return;
+    const target = evt.target;
+    if (target == null ? void 0 : target.closest("#inline-outline"))
       return;
     this.suppressTargetFlashBriefly();
   }
@@ -484,6 +493,8 @@ var InlineOutlinePlugin = class extends import_obsidian.Plugin {
     const h = this.headings[index];
     if (!h || !this.getView())
       return;
+    this.cancelTargetFlashSuppression();
+    this.clearObsidianTargetFlash();
     this.shouldClearTargetFlashOnFocus = true;
     this.watchTargetFlash();
     this.pendingNavigationIndex = index;

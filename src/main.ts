@@ -29,6 +29,7 @@ export default class InlineOutlinePlugin extends Plugin {
 	private targetFlashObserver: MutationObserver | null = null;
 	private targetFlashFocusCleanup: (() => void) | null = null;
 	private targetFlashReturnGuardTimer: number | null = null;
+	private targetFlashSuppressTimers: number[] = [];
 	private shouldClearTargetFlashOnFocus = false;
 	private isReading = false;
 	private lastFocusLine = -1;
@@ -57,6 +58,7 @@ export default class InlineOutlinePlugin extends Plugin {
 		this.registerDomEvent(document, 'visibilitychange', () => {
 			if (!document.hidden) this.clearTargetFlashOnWindowReturn();
 		});
+		this.registerDomEvent(document, 'pointerdown', (evt: PointerEvent) => this.clearTargetFlashBeforeInteraction(evt), { capture: true });
 
 		// --- Auto-Hide UI Logic (Notion Style) ---
 		// 1. Wake up the UI when the mouse moves anywhere
@@ -93,6 +95,7 @@ export default class InlineOutlinePlugin extends Plugin {
 		if (this.navigationCleanupTimer) window.clearTimeout(this.navigationCleanupTimer);
 		if (this.targetFlashRemovalTimer) window.clearTimeout(this.targetFlashRemovalTimer);
 		if (this.targetFlashReturnGuardTimer) window.clearTimeout(this.targetFlashReturnGuardTimer);
+		this.targetFlashSuppressTimers.forEach(timer => window.clearTimeout(timer));
 		this.targetFlashObserver?.disconnect();
 		this.targetFlashFocusCleanup?.();
 		this.sidebarObserver?.disconnect();
@@ -158,21 +161,6 @@ export default class InlineOutlinePlugin extends Plugin {
 		return (view.editor as { cm?: CMEditor })?.cm ?? null;
 	}
 
-	private clearNavigationSelection() {
-		window.getSelection()?.removeAllRanges();
-
-		const view = this.getView();
-		if (!view || this.isReading) return;
-
-		try {
-			const cursor = view.editor.getCursor('from');
-			view.editor.setSelection(cursor, cursor);
-			view.editor.setCursor(cursor);
-		} catch {
-			// Ignore selection cleanup failures and preserve navigation behavior.
-		}
-	}
-
 	private clearObsidianTargetFlash() {
 		document.querySelectorAll('.is-flashing, .minimalist-flash-fading').forEach(el => {
 			el.classList.remove('is-flashing', 'minimalist-flash-fading');
@@ -180,29 +168,52 @@ export default class InlineOutlinePlugin extends Plugin {
 	}
 
 	private clearNavigationArtifacts() {
-		this.clearNavigationSelection();
 		this.clearObsidianTargetFlash();
 	}
 
-	private suppressTargetFlashBriefly() {
+	private cancelTargetFlashSuppression() {
 		if (this.targetFlashReturnGuardTimer) window.clearTimeout(this.targetFlashReturnGuardTimer);
+		this.targetFlashReturnGuardTimer = null;
+		this.targetFlashSuppressTimers.forEach(timer => window.clearTimeout(timer));
+		this.targetFlashSuppressTimers = [];
+		document.body.classList.remove('minimalist-suppress-target-flash');
+	}
+
+	private queueTargetFlashSuppressClear(delay: number) {
+		const timer = window.setTimeout(() => {
+			this.clearNavigationArtifacts();
+			this.targetFlashSuppressTimers = this.targetFlashSuppressTimers.filter(active => active !== timer);
+		}, delay);
+
+		this.targetFlashSuppressTimers.push(timer);
+	}
+
+	private suppressTargetFlashBriefly() {
+		this.cancelTargetFlashSuppression();
 
 		document.body.classList.add('minimalist-suppress-target-flash');
 		this.clearNavigationArtifacts();
-		window.setTimeout(() => this.clearNavigationArtifacts(), 50);
-		window.setTimeout(() => this.clearNavigationArtifacts(), 200);
-		window.setTimeout(() => this.clearNavigationArtifacts(), 700);
-		window.setTimeout(() => this.clearNavigationArtifacts(), 1200);
+		[50, 200, 700, 1200].forEach(delay => this.queueTargetFlashSuppressClear(delay));
 
 		this.targetFlashReturnGuardTimer = window.setTimeout(() => {
 			this.clearNavigationArtifacts();
 			document.body.classList.remove('minimalist-suppress-target-flash');
+			this.shouldClearTargetFlashOnFocus = false;
 			this.targetFlashReturnGuardTimer = null;
 		}, TARGET_FLASH_RETURN_GUARD_MS);
 	}
 
 	private clearTargetFlashOnWindowReturn() {
 		if (!this.shouldClearTargetFlashOnFocus) return;
+		this.suppressTargetFlashBriefly();
+	}
+
+	private clearTargetFlashBeforeInteraction(evt: PointerEvent) {
+		if (!this.shouldClearTargetFlashOnFocus) return;
+
+		const target = evt.target as HTMLElement | null;
+		if (target?.closest('#inline-outline')) return;
+
 		this.suppressTargetFlashBriefly();
 	}
 
@@ -461,6 +472,8 @@ export default class InlineOutlinePlugin extends Plugin {
 	private navigate(index: number) {
 		const h = this.headings[index];
 		if (!h || !this.getView()) return;
+		this.cancelTargetFlashSuppression();
+		this.clearObsidianTargetFlash();
 		this.shouldClearTargetFlashOnFocus = true;
 		this.watchTargetFlash();
 		this.pendingNavigationIndex = index;
