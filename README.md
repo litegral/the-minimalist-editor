@@ -38,6 +38,15 @@ Keeps attention on what you're writing.
 3. Search **“The Minimalist Editor”**  
 4. Install & enable  
 
+> if it’s not on the official list yet, use the BRAT method below.
+
+### BRAT (alternative)
+1. Install the BRAT plugin from: https://github.com/TfTHacker/obsidian42-brat  
+2. Open BRAT settings in Obsidian  
+3. Click “Add Beta Plugin”  
+4. Paste the repository URL for **The Minimalist Editor**  
+5. Install & enable  
+
 ### Manual
 1. Download latest release  
 2. Extract to `.obsidian/plugins/the-minimalist-editor/`  
