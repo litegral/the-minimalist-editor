@@ -177,6 +177,19 @@
 	white-space: nowrap;
 }
 
+.minimalist-flash-fading {
+	background-color: transparent !important;
+	box-shadow: none !important;
+	transition: background-color 0.35s ease, box-shadow 0.35s ease !important;
+}
+
+body.minimalist-suppress-target-flash .is-flashing,
+body.minimalist-suppress-target-flash .minimalist-flash-fading {
+	background-color: transparent !important;
+	box-shadow: none !important;
+	transition: none !important;
+}
+
 .inline-outline::-webkit-scrollbar { width: 4px; }
 .inline-outline::-webkit-scrollbar-track { background: transparent; }
 .inline-outline::-webkit-scrollbar-thumb {

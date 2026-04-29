@@ -44,6 +44,9 @@ var DEFAULT_SETTINGS = {
 // src/main.ts
 var LINK_REGEX = /\[\[(?:[^\]|]+\|)?([^\]]+)\]\]|\[([^\]]+)\]\([^)]+\)/g;
 var FOCUS_CLASSES = ["cm-focus-active", "cm-focus-adjacent", "focus-active", "focus-adjacent"];
+var TARGET_FLASH_VISIBLE_MS = 1400;
+var TARGET_FLASH_FADE_MS = 350;
+var TARGET_FLASH_RETURN_GUARD_MS = 1600;
 var InlineOutlinePlugin = class extends import_obsidian.Plugin {
   constructor() {
     super(...arguments);
@@ -53,6 +56,14 @@ var InlineOutlinePlugin = class extends import_obsidian.Plugin {
     this.headingTexts = [];
     this.scrollContainer = null;
     this.activeIndex = -1;
+    this.pendingNavigationIndex = null;
+    this.pendingNavigationUntil = 0;
+    this.navigationCleanupTimer = null;
+    this.targetFlashRemovalTimer = null;
+    this.targetFlashObserver = null;
+    this.targetFlashFocusCleanup = null;
+    this.targetFlashReturnGuardTimer = null;
+    this.shouldClearTargetFlashOnFocus = false;
     this.isReading = false;
     this.lastFocusLine = -1;
     this.lastFocusIdx = -1;
@@ -79,6 +90,11 @@ var InlineOutlinePlugin = class extends import_obsidian.Plugin {
       setTimeout(() => this.init(), 100);
     }));
     this.registerEvent(this.app.metadataCache.on("changed", refresh));
+    this.registerDomEvent(window, "focus", () => this.clearTargetFlashOnWindowReturn());
+    this.registerDomEvent(document, "visibilitychange", () => {
+      if (!document.hidden)
+        this.clearTargetFlashOnWindowReturn();
+    });
     this.registerDomEvent(document, "mousemove", () => {
       if (this.settings.autoHideUI && document.body.classList.contains("zen-ui-hidden")) {
         document.body.classList.remove("zen-ui-hidden");
@@ -101,16 +117,25 @@ var InlineOutlinePlugin = class extends import_obsidian.Plugin {
     });
   }
   onunload() {
-    var _a, _b;
+    var _a, _b, _c, _d;
     this.cleanup();
     (_a = this.outlineEl) == null ? void 0 : _a.remove();
     [this.scrollRAF, this.resizeRAF, this.focusRAF].forEach((r) => r && cancelAnimationFrame(r));
-    (_b = this.sidebarObserver) == null ? void 0 : _b.disconnect();
+    if (this.navigationCleanupTimer)
+      window.clearTimeout(this.navigationCleanupTimer);
+    if (this.targetFlashRemovalTimer)
+      window.clearTimeout(this.targetFlashRemovalTimer);
+    if (this.targetFlashReturnGuardTimer)
+      window.clearTimeout(this.targetFlashReturnGuardTimer);
+    (_b = this.targetFlashObserver) == null ? void 0 : _b.disconnect();
+    (_c = this.targetFlashFocusCleanup) == null ? void 0 : _c.call(this);
+    (_d = this.sidebarObserver) == null ? void 0 : _d.disconnect();
     document.body.classList.remove(
       "minimalist-hide-properties",
       "minimalist-hide-scrollbar",
       "minimalist-focus-mode",
-      "zen-ui-hidden"
+      "zen-ui-hidden",
+      "minimalist-suppress-target-flash"
     );
     this.clearFocusClasses();
   }
@@ -169,6 +194,103 @@ var InlineOutlinePlugin = class extends import_obsidian.Plugin {
   getCM(view) {
     var _a, _b;
     return (_b = (_a = view.editor) == null ? void 0 : _a.cm) != null ? _b : null;
+  }
+  clearNavigationSelection() {
+    var _a;
+    (_a = window.getSelection()) == null ? void 0 : _a.removeAllRanges();
+    const view = this.getView();
+    if (!view || this.isReading)
+      return;
+    try {
+      const cursor = view.editor.getCursor("from");
+      view.editor.setSelection(cursor, cursor);
+      view.editor.setCursor(cursor);
+    } catch (e) {
+    }
+  }
+  clearObsidianTargetFlash() {
+    document.querySelectorAll(".is-flashing, .minimalist-flash-fading").forEach((el) => {
+      el.classList.remove("is-flashing", "minimalist-flash-fading");
+    });
+  }
+  clearNavigationArtifacts() {
+    this.clearNavigationSelection();
+    this.clearObsidianTargetFlash();
+  }
+  suppressTargetFlashBriefly() {
+    if (this.targetFlashReturnGuardTimer)
+      window.clearTimeout(this.targetFlashReturnGuardTimer);
+    document.body.classList.add("minimalist-suppress-target-flash");
+    this.clearNavigationArtifacts();
+    window.setTimeout(() => this.clearNavigationArtifacts(), 50);
+    window.setTimeout(() => this.clearNavigationArtifacts(), 200);
+    window.setTimeout(() => this.clearNavigationArtifacts(), 700);
+    window.setTimeout(() => this.clearNavigationArtifacts(), 1200);
+    this.targetFlashReturnGuardTimer = window.setTimeout(() => {
+      this.clearNavigationArtifacts();
+      document.body.classList.remove("minimalist-suppress-target-flash");
+      this.targetFlashReturnGuardTimer = null;
+    }, TARGET_FLASH_RETURN_GUARD_MS);
+  }
+  clearTargetFlashOnWindowReturn() {
+    if (!this.shouldClearTargetFlashOnFocus)
+      return;
+    this.suppressTargetFlashBriefly();
+  }
+  stopWatchingTargetFlash() {
+    var _a, _b;
+    if (this.navigationCleanupTimer)
+      window.clearTimeout(this.navigationCleanupTimer);
+    if (this.targetFlashRemovalTimer)
+      window.clearTimeout(this.targetFlashRemovalTimer);
+    this.navigationCleanupTimer = null;
+    this.targetFlashRemovalTimer = null;
+    (_a = this.targetFlashObserver) == null ? void 0 : _a.disconnect();
+    this.targetFlashObserver = null;
+    (_b = this.targetFlashFocusCleanup) == null ? void 0 : _b.call(this);
+    this.targetFlashFocusCleanup = null;
+  }
+  scheduleVisibleTargetFlashRemoval() {
+    if (this.targetFlashRemovalTimer || !document.querySelector(".is-flashing"))
+      return;
+    this.targetFlashRemovalTimer = window.setTimeout(() => {
+      document.querySelectorAll(".is-flashing").forEach((el) => {
+        el.classList.add("minimalist-flash-fading");
+        el.classList.remove("is-flashing");
+      });
+      this.targetFlashRemovalTimer = window.setTimeout(() => {
+        this.clearNavigationArtifacts();
+        this.targetFlashRemovalTimer = null;
+      }, TARGET_FLASH_FADE_MS);
+    }, TARGET_FLASH_VISIBLE_MS);
+  }
+  watchTargetFlash() {
+    this.stopWatchingTargetFlash();
+    this.targetFlashObserver = new MutationObserver(() => this.scheduleVisibleTargetFlashRemoval());
+    this.targetFlashObserver.observe(document.body, {
+      attributeFilter: ["class"],
+      attributes: true,
+      childList: true,
+      subtree: true
+    });
+    const clearOnWindowLeave = () => {
+      this.suppressTargetFlashBriefly();
+      this.stopWatchingTargetFlash();
+    };
+    const clearOnVisibilityChange = () => {
+      if (document.hidden)
+        clearOnWindowLeave();
+    };
+    window.addEventListener("blur", clearOnWindowLeave);
+    document.addEventListener("visibilitychange", clearOnVisibilityChange);
+    this.targetFlashFocusCleanup = () => {
+      window.removeEventListener("blur", clearOnWindowLeave);
+      document.removeEventListener("visibilitychange", clearOnVisibilityChange);
+    };
+    window.setTimeout(() => this.scheduleVisibleTargetFlashRemoval(), 0);
+    this.navigationCleanupTimer = window.setTimeout(() => {
+      this.stopWatchingTargetFlash();
+    }, 3e3);
   }
   toggleOutline() {
     if (this.outlineEl)
@@ -243,7 +365,7 @@ var InlineOutlinePlugin = class extends import_obsidian.Plugin {
     const file = this.app.workspace.getActiveFile();
     const cache = file && this.app.metadataCache.getFileCache(file);
     this.headings = ((_a = cache == null ? void 0 : cache.headings) == null ? void 0 : _a.map((h) => ({ level: h.level, text: h.heading, position: h.position }))) || [];
-    this.headingTexts = this.headings.map((h) => this.strip(h.text).toLowerCase());
+    this.headingTexts = this.headings.map((h) => this.normalizeHeadingText(h.text));
     this.render();
     this.activeIndex = -1;
     if (this.isReading) {
@@ -254,6 +376,12 @@ var InlineOutlinePlugin = class extends import_obsidian.Plugin {
   }
   strip(text) {
     return text.replace(LINK_REGEX, "$1$2").trim();
+  }
+  cleanHeadingLabel(text) {
+    return this.strip(text).replace(/[`*_~]/g, "").replace(/^[\s\-=_~`#>*|:;,.!?()[\]{}]+/, "").replace(/[\s\-=_~`#>*|:;,.!?()[\]{}]+$/, "").replace(/\s+/g, " ").trim();
+  }
+  normalizeHeadingText(text) {
+    return this.cleanHeadingLabel(text).toLowerCase();
   }
   render() {
     if (!this.outlineEl)
@@ -268,11 +396,30 @@ var InlineOutlinePlugin = class extends import_obsidian.Plugin {
     this.headings.forEach((h, i) => {
       const item = frag.createDiv({ cls: `inline-outline-item inline-outline-level-${h.level}` });
       item.createDiv({ cls: "inline-outline-line" });
-      item.createSpan({ cls: "inline-outline-text", text: this.strip(h.text) });
+      item.createSpan({ cls: "inline-outline-text", text: this.cleanHeadingLabel(h.text) });
       item.addEventListener("click", () => this.navigate(i));
       this.outlineItems.push(item);
     });
     this.outlineEl.appendChild(frag);
+  }
+  getHeadingViewportTop(index) {
+    var _a, _b, _c, _d, _e;
+    if (index < 0 || index >= this.headings.length)
+      return null;
+    if (this.isReading) {
+      const view2 = this.getView();
+      const headings = Array.from((_a = view2 == null ? void 0 : view2.contentEl.querySelectorAll(".markdown-preview-view :is(h1,h2,h3,h4,h5,h6)")) != null ? _a : []);
+      return (_c = (_b = headings[index]) == null ? void 0 : _b.getBoundingClientRect().top) != null ? _c : null;
+    }
+    const view = this.getView();
+    const cm = view && this.getCM(view);
+    if (!cm)
+      return null;
+    try {
+      return (_e = (_d = cm.coordsAtPos(cm.state.doc.line(this.headings[index].position.start.line + 1).from, -1)) == null ? void 0 : _d.top) != null ? _e : null;
+    } catch (e) {
+      return null;
+    }
   }
   updateActive() {
     var _a;
@@ -281,6 +428,7 @@ var InlineOutlinePlugin = class extends import_obsidian.Plugin {
     const rect = this.scrollContainer.getBoundingClientRect();
     const threshold = rect.top + rect.height * 0.4;
     const atTop = this.scrollContainer.scrollTop < 50;
+    const atBottom = this.scrollContainer.scrollTop + this.scrollContainer.clientHeight >= this.scrollContainer.scrollHeight - 4;
     let active = 0;
     if (atTop) {
       active = 0;
@@ -288,7 +436,7 @@ var InlineOutlinePlugin = class extends import_obsidian.Plugin {
       const view = this.getView();
       const els = Array.from((_a = view == null ? void 0 : view.contentEl.querySelectorAll(".markdown-preview-view :is(h1,h2,h3,h4,h5,h6)")) != null ? _a : []);
       for (const el of els) {
-        const text = (el.textContent || "").toLowerCase().trim();
+        const text = this.normalizeHeadingText(el.textContent || "");
         let idx = this.headingTexts.indexOf(text);
         if (idx === -1)
           idx = this.headingTexts.findIndex((t) => text.includes(t) || t.includes(text));
@@ -310,6 +458,23 @@ var InlineOutlinePlugin = class extends import_obsidian.Plugin {
         }
       }
     }
+    if (this.pendingNavigationIndex !== null) {
+      if (Date.now() > this.pendingNavigationUntil) {
+        this.pendingNavigationIndex = null;
+      } else {
+        const targetTop = this.getHeadingViewportTop(this.pendingNavigationIndex);
+        if (targetTop !== null && targetTop >= rect.top - 8 && targetTop <= rect.bottom + 8) {
+          active = this.pendingNavigationIndex;
+        }
+      }
+    }
+    if (atBottom && this.pendingNavigationIndex === null) {
+      for (let i = 0; i < this.headings.length; i++) {
+        const top = this.getHeadingViewportTop(i);
+        if (top !== null && top <= rect.bottom)
+          active = i;
+      }
+    }
     if (active !== this.activeIndex) {
       this.activeIndex = active;
       this.outlineItems.forEach((el, i) => el.classList.toggle("active", i === active));
@@ -319,11 +484,19 @@ var InlineOutlinePlugin = class extends import_obsidian.Plugin {
     const h = this.headings[index];
     if (!h || !this.getView())
       return;
+    this.shouldClearTargetFlashOnFocus = true;
+    this.watchTargetFlash();
+    this.pendingNavigationIndex = index;
+    this.pendingNavigationUntil = Date.now() + 900;
     this.activeIndex = index;
     this.outlineItems.forEach((el, i) => el.classList.toggle("active", i === index));
     const file = this.app.workspace.getActiveFile();
     if (file)
       void this.app.workspace.openLinkText(`${file.path}#${h.text}`, file.path, false);
+    window.setTimeout(() => this.updateActive(), 80);
+    window.setTimeout(() => this.updateActive(), 180);
+    window.setTimeout(() => this.updateActive(), 320);
+    window.setTimeout(() => this.updateActive(), 700);
   }
   updateFocus() {
     if (!this.settings.focusMode)
