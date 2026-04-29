@@ -1,81 +1,65 @@
 # The Minimalist Editor
 
-A distraction-free writing plugin for Obsidian featuring an inline outline, focus mode, and clean UI options.
+A distraction-free writing plugin for Obsidian with an inline outline, focus mode, and clean UI tweaks.
 
-![Inline outline preview](screenshot_1.png)
+https://github.com/user-attachments/assets/6f2ec7a8-0ae8-4822-b453-025792335775
 
 ## Features
 
-![Features preview](screenshot_2.png)
+<img width="1501" height="1408" alt="image" src="https://github.com/user-attachments/assets/b19c12da-3faf-40d0-ba39-cc56c449445d" />
 
 ### Inline Outline
+A lightweight table of contents on the right side.
 
-A Notion-style table of contents that appears on the right side of your editor.
-
-- **Collapsed state**: Shows minimal horizontal lines representing heading hierarchy
-- **Hover to expand**: Reveals full heading text with indentation
-- **Click to navigate**: Jump to any section instantly
-- **Active tracking**: Highlights the current heading as you scroll
-- **Two styles available**:
-  - Standard (centered, larger elements)
-  - Minimal (top-positioned, compact)
+- Collapsed view shows simple hierarchy lines  
+- Hover to expand headings  
+- Click to jump to sections  
+- Highlights current section  
+- Two styles: **Standard** and **Minimal**
 
 ### Focus Mode
+Keeps attention on what you're writing.
 
-Dims all content except the line you're currently editing, helping you concentrate on your writing.
+- Highlights current line/paragraph  
+- Nearby lines slightly visible for context  
+- Adjustable dim level (10–70%)  
+- Smooth transitions  
+- Works in Edit & Reading modes  
 
-- Works in both Edit and Reading modes
-- Highlights current line/paragraph with full opacity
-- Adjacent lines shown at intermediate opacity for context
-- Configurable dim opacity (10-70%)
-- Smooth transitions between focused elements
-
-### Distraction-Free Options
-
-- **Hide Properties**: Removes frontmatter/metadata from the editor (still accessible in sidebar)
-- **Hide Scrollbar**: Removes scrollbars for a cleaner appearance
+### Clean UI Options
+- Hide frontmatter (properties)  
+- Hide scrollbars  
 
 ## Installation
 
-### From Obsidian Community Plugins
+### Community Plugins
+1. Settings → Community Plugins  
+2. Disable Safe Mode  
+3. Search **“The Minimalist Editor”**  
+4. Install & enable  
 
-1. Open Obsidian Settings
-2. Go to Community Plugins and disable Safe Mode
-3. Click Browse and search for "The Minimalist Editor"
-4. Install and enable the plugin
-
-### Manual Installation
-
-1. Download the latest release from GitHub
-2. Extract to your vault's `.obsidian/plugins/the-minimalist-editor/` folder
-3. Reload Obsidian
-4. Enable the plugin in Settings → Community Plugins
+### Manual
+1. Download latest release  
+2. Extract to `.obsidian/plugins/the-minimalist-editor/`  
+3. Reload Obsidian  
+4. Enable plugin  
 
 ## Usage
 
 ### Settings
+Settings → **The Minimalist Editor**
 
-Access plugin settings via **Settings → The Minimalist Editor**
+- Toggle outline  
+- Switch minimal style  
+- Enable focus mode  
+- Adjust dim opacity  
+- Hide properties / scrollbar  
 
-| Setting | Description |
-|---------|-------------|
-| Show Outline | Toggle the inline outline visibility |
-| Minimal Style | Use compact Notion-like outline style |
-| Hide Properties | Hide frontmatter from editor view |
-| Hide Scrollbar | Remove scrollbars from editor |
-| Enable Focus Mode | Activate focus dimming |
-| Dim Opacity | Adjust how much unfocused content is dimmed |
+### Commands (Cmd/Ctrl + P)
+- Toggle Inline Outline  
+- Toggle Focus Mode  
 
-### Commands
-
-Available via Command Palette (Ctrl/Cmd + P):
-
-- **Toggle Inline Outline**: Show/hide the outline
-- **Toggle Focus Mode**: Enable/disable focus dimming
-
-### Keyboard Shortcuts
-
-You can assign custom hotkeys to the commands above in **Settings → Hotkeys**.
+Hotkeys can be customized in Settings → Hotkeys.
 
 ## Compatibility
 
