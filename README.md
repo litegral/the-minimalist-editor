@@ -8,7 +8,7 @@ https://github.com/user-attachments/assets/6f2ec7a8-0ae8-4822-b453-025792335775
 
 <img width="1501" height="1408" alt="image" src="https://github.com/user-attachments/assets/b19c12da-3faf-40d0-ba39-cc56c449445d" />
 
-### Inline Outline
+### Notion-style Side Table of Contents
 A lightweight table of contents on the right side.
 
 - Collapsed view shows simple hierarchy lines  
@@ -17,18 +17,15 @@ A lightweight table of contents on the right side.
 - Highlights current section  
 - Two styles: **Standard** and **Minimal**
 
-### Focus Mode
+### Distraction-free Mode
 Keeps attention on what you're writing.
 
-- Highlights current line/paragraph  
-- Nearby lines slightly visible for context  
-- Adjustable dim level (10–70%)  
-- Smooth transitions  
-- Works in Edit & Reading modes  
+- **Auto-hide UI** when you start writing
+- Focus mode that **dims content except the current line/paragraph**
 
 ### Clean UI Options
-- Hide frontmatter (properties)  
-- Hide scrollbars  
+- Hide **frontmatter** (properties)  
+- Hide **scrollbars**  
 
 ## Installation
 
