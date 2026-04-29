@@ -1,7 +1,7 @@
 {
   "id": "the-minimalist-editor",
   "name": "The Minimalist Editor",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Distraction-free writing with inline outline, focus mode, and clean UI options. Features a Notion-style hover-to-expand table of contents, line-by-line focus dimming, and the ability to hide properties and scrollbars.",
   "author": "litegral",
   "authorUrl": "https://github.com/litegral",
