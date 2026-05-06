@@ -219,6 +219,91 @@ body.minimalist-suppress-target-flash .minimalist-flash-fading {
 	padding: 8px 12px 8px 8px;
 }
 
+.minimalist-exclusion-setting {
+	margin: 6px 0 12px 0;
+}
+
+.minimalist-exclusion-card {
+	padding: 12px 14px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 10px;
+	background: var(--background-secondary);
+}
+
+.minimalist-exclusion-title {
+	margin-bottom: 4px;
+}
+
+.minimalist-exclusion-description {
+	margin-bottom: 8px;
+}
+
+.minimalist-exclusion-control {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	flex-wrap: wrap;
+}
+
+.minimalist-exclusion-input {
+	min-width: 220px;
+}
+
+.minimalist-exclusion-list {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	margin-top: 8px;
+}
+
+.minimalist-exclusion-empty {
+	font-size: 12px;
+}
+
+.minimalist-exclusion-chip {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	max-width: 100%;
+	padding: 4px 8px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: 999px;
+	background: var(--background-secondary);
+	font-size: 12px;
+	line-height: 1.2;
+}
+
+.minimalist-exclusion-chip-label {
+	max-width: 240px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.minimalist-exclusion-chip-kind {
+	color: var(--text-muted);
+	font-size: 11px;
+}
+
+.minimalist-exclusion-chip-remove {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 18px;
+	height: 18px;
+	padding: 0;
+	border: none;
+	border-radius: 999px;
+	background: transparent;
+	color: var(--text-muted);
+	cursor: pointer;
+}
+
+.minimalist-exclusion-chip-remove:hover {
+	background: var(--background-modifier-hover);
+	color: var(--text-normal);
+}
+
 .inline-outline.minimal-style .inline-outline-item {
 	padding: 2px 0;
 }

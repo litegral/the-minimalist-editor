@@ -1,4 +1,17 @@
-import { App, Plugin, PluginSettingTab, Setting, MarkdownView, debounce } from 'obsidian';
+import {
+	App,
+	Plugin,
+	PluginSettingTab,
+	Setting,
+	MarkdownView,
+	AbstractInputSuggest,
+	SearchComponent,
+	TAbstractFile,
+	TFile,
+	TFolder,
+	debounce,
+	prepareFuzzySearch
+} from 'obsidian';
 import { MinimalistSettings, DEFAULT_SETTINGS, OutlineHeading } from './settings';
 
 const LINK_REGEX = /\[\[(?:[^\]|]+\|)?([^\]]+)\]\]|\[([^\]]+)\]\([^)]+\)/g;
@@ -51,8 +64,16 @@ export default class InlineOutlinePlugin extends Plugin {
 		this.addCommand({ id: 'toggle-focus-mode', name: 'Toggle focus mode', callback: () => this.toggleFocusMode() });
 
 		const refresh = debounce(() => this.refresh(), 300, true);
-		this.registerEvent(this.app.workspace.on('active-leaf-change', () => { this.cleanup(); setTimeout(() => this.init(), 100); }));
-		this.registerEvent(this.app.workspace.on('layout-change', () => { this.updatePosition(); setTimeout(() => this.init(), 100); }));
+		this.registerEvent(this.app.workspace.on('active-leaf-change', () => {
+			this.applyBodyClasses();
+			this.cleanup();
+			setTimeout(() => this.init(), 100);
+		}));
+		this.registerEvent(this.app.workspace.on('layout-change', () => {
+			this.applyBodyClasses();
+			this.updatePosition();
+			setTimeout(() => this.init(), 100);
+		}));
 		this.registerEvent(this.app.metadataCache.on('changed', refresh));
 		this.registerDomEvent(window, 'focus', () => this.clearTargetFlashOnWindowReturn());
 		this.registerDomEvent(document, 'visibilitychange', () => {
@@ -63,14 +84,14 @@ export default class InlineOutlinePlugin extends Plugin {
 		// --- Auto-Hide UI Logic (Notion Style) ---
 		// 1. Wake up the UI when the mouse moves anywhere
 		this.registerDomEvent(document, 'mousemove', () => {
-			if (this.settings.autoHideUI && document.body.classList.contains('zen-ui-hidden')) {
+			if (this.isAutoHideUIEnabledForCurrentFile() && document.body.classList.contains('zen-ui-hidden')) {
 				document.body.classList.remove('zen-ui-hidden');
 			}
 		});
 
 		// 2. Hide the UI when typing starts inside the editor
 		this.registerDomEvent(document, 'keydown', (evt: KeyboardEvent) => {
-			if (!this.settings.autoHideUI) return;
+			if (!this.isAutoHideUIEnabledForCurrentFile()) return;
 			
 			const target = evt.target as HTMLElement;
 			if (target && target.closest('.cm-editor')) {
@@ -116,9 +137,38 @@ export default class InlineOutlinePlugin extends Plugin {
 		this.cleanupFns = [];
 	}
 
+	private clearOutlineState(hide = false) {
+		this.headings = [];
+		this.headingTexts = [];
+		this.outlineItems = [];
+		this.activeIndex = -1;
+		this.pendingNavigationIndex = null;
+		this.pendingNavigationUntil = 0;
+		this.scrollContainer = null;
+
+		if (!this.outlineEl) return;
+
+		if (hide) {
+			this.outlineEl.empty();
+			this.outlineEl.style.display = 'none';
+			return;
+		}
+
+		this.outlineEl.style.display = '';
+		this.render();
+	}
+
 	private init() {
+		this.applyBodyClasses();
 		const view = this.getView();
-		if (!view) { this.scrollContainer = null; return; }
+		if (!view) {
+			this.clearOutlineState(true);
+			return;
+		}
+
+		if (this.outlineEl) {
+			this.outlineEl.style.display = '';
+		}
 
 		this.isReading = view.getMode() === 'preview';
 		this.scrollContainer = view.contentEl.querySelector(this.isReading ? '.markdown-preview-view' : '.cm-scroller');
@@ -308,10 +358,90 @@ export default class InlineOutlinePlugin extends Plugin {
 		classList.toggle('minimalist-hide-scrollbar', this.settings.hideScrollbar);
 		classList.toggle('minimalist-focus-mode', this.settings.focusMode);
 		
-		// If turned off, ensure the UI comes back immediately
-		if (!this.settings.autoHideUI) {
+		// If turned off or excluded, ensure the UI comes back immediately
+		if (!this.isAutoHideUIEnabledForCurrentFile()) {
 			classList.remove('zen-ui-hidden');
 		}
+	}
+
+	normalizeExclusionPath(path: string) {
+		return path.replace(/\\/g, '/').trim();
+	}
+
+	private sortExclusions(paths: string[]) {
+		return [...paths].sort((a, b) => a.localeCompare(b));
+	}
+
+	private dedupeExclusions(paths: string[]) {
+		return [...new Set(paths)];
+	}
+
+	getAutoHideUIExclusions() {
+		return this.sortExclusions(this.dedupeExclusions(this.settings.autoHideUIExclusions
+			.map(path => this.normalizeExclusionPath(path))
+			.filter(Boolean)));
+	}
+
+	private getExclusionSuggestionValue(file: TAbstractFile) {
+		return file instanceof TFolder ? `${file.path}/` : file.path;
+	}
+
+	private isVaultRootSuggestion(value: string) {
+		const normalized = this.normalizeExclusionPath(value).replace(/\/+$/, '');
+		return normalized.length === 0;
+	}
+
+	getAutoHideUISuggestionItems() {
+		return this.app.vault.getAllLoadedFiles()
+			.filter((file): file is TFile | TFolder => file instanceof TFile || file instanceof TFolder)
+			.map(file => ({ value: this.getExclusionSuggestionValue(file) }))
+			.filter(item => !this.isVaultRootSuggestion(item.value));
+	}
+
+	async saveAutoHideUIExclusions(paths: string[]) {
+		this.settings.autoHideUIExclusions = this.sortExclusions(
+			this.dedupeExclusions(paths.map(path => this.normalizeExclusionPath(path)).filter(Boolean))
+		);
+		await this.saveSettings();
+		this.applyBodyClasses();
+	}
+
+	async addAutoHideUIExclusion(path: string) {
+		const normalizedPath = this.normalizeExclusionPath(path);
+		if (!normalizedPath) return false;
+
+		if (this.getAutoHideUIExclusions().includes(normalizedPath)) {
+			return false;
+		}
+
+		await this.saveAutoHideUIExclusions([...this.settings.autoHideUIExclusions, normalizedPath]);
+		return true;
+	}
+
+	async removeAutoHideUIExclusion(path: string) {
+		const normalizedPath = this.normalizeExclusionPath(path);
+		await this.saveAutoHideUIExclusions(
+			this.settings.autoHideUIExclusions.filter(entry => this.normalizeExclusionPath(entry) !== normalizedPath)
+		);
+	}
+
+	private isAutoHideUIExcluded(filePath: string | null) {
+		if (!filePath) return false;
+
+		const normalizedFilePath = this.normalizeExclusionPath(filePath);
+		return this.getAutoHideUIExclusions().some(exclusion => {
+			if (exclusion.endsWith('/')) {
+				return normalizedFilePath.startsWith(exclusion);
+			}
+
+			return normalizedFilePath === exclusion;
+		});
+	}
+
+	private isAutoHideUIEnabledForCurrentFile() {
+		if (!this.settings.autoHideUI) return false;
+		const filePath = this.app.workspace.getActiveFile()?.path ?? null;
+		return !this.isAutoHideUIExcluded(filePath);
 	}
 
 	updateFocusOpacity() {
@@ -346,6 +476,11 @@ export default class InlineOutlinePlugin extends Plugin {
 
 	private refresh() {
 		const file = this.app.workspace.getActiveFile();
+		if (!file) {
+			this.clearOutlineState(true);
+			return;
+		}
+
 		const cache = file && this.app.metadataCache.getFileCache(file);
 		this.headings = cache?.headings?.map(h => ({ level: h.level, text: h.heading, position: h.position })) || [];
 		this.headingTexts = this.headings.map(h => this.normalizeHeadingText(h.text));
@@ -592,6 +727,7 @@ class MinimalistSettingTab extends PluginSettingTab {
 	display() {
 		const { containerEl } = this;
 		containerEl.empty();
+		let autoHideSettingEl: HTMLElement | null = null;
 
 		const sections: [string, [string, string, keyof MinimalistSettings, () => void][]][] = [
 			['Inline outline', [
@@ -601,7 +737,7 @@ class MinimalistSettingTab extends PluginSettingTab {
 			['Distraction-free', [
 				['Hide properties', 'Hide properties/metadata from editor (visible in sidebar)', 'hideProperties', () => this.plugin.applyBodyClasses()],
 				['Hide scrollbar', 'Hide scrollbar for cleaner appearance', 'hideScrollbar', () => this.plugin.applyBodyClasses()],
-				['Auto-hide UI', 'Hide titlebar and tabs when typing (Notion-style)', 'autoHideUI', () => this.plugin.applyBodyClasses()], // Added toggle here!
+				['Auto-hide UI', 'Hide titlebar and tabs when typing (Notion-style)', 'autoHideUI', () => this.plugin.applyBodyClasses()],
 			]],
 			['Focus mode', [
 				['Enable focus mode', 'Dim content except current line/paragraph', 'focusMode', () => {
@@ -619,14 +755,20 @@ class MinimalistSettingTab extends PluginSettingTab {
 		for (const [title, settings] of sections) {
 			new Setting(containerEl).setName(title).setHeading();
 			for (const [name, desc, key, onChange] of settings) {
-				new Setting(containerEl).setName(name).setDesc(desc).addToggle(t => 
+				const setting = new Setting(containerEl).setName(name).setDesc(desc).addToggle(t =>
 					t.setValue(this.plugin.settings[key] as boolean).onChange(async v => {
 						(this.plugin.settings[key] as boolean) = v;
 						await this.plugin.saveSettings();
 						onChange();
 					})
 				);
+
+				if (key === 'autoHideUI') autoHideSettingEl = setting.settingEl;
 			}
+		}
+
+		if (autoHideSettingEl) {
+			this.renderAutoHideExclusions(autoHideSettingEl);
 		}
 
 		new Setting(containerEl)
@@ -634,5 +776,145 @@ class MinimalistSettingTab extends PluginSettingTab {
 			.setDesc('How much to dim unfocused content (lower = more dim)')
 			.addSlider(s => s.setLimits(10, 70, 5).setValue(this.plugin.settings.focusDimOpacity).setDynamicTooltip()
 				.onChange(async v => { this.plugin.settings.focusDimOpacity = v; await this.plugin.saveSettings(); this.plugin.updateFocusOpacity(); }));
+	}
+
+	private renderAutoHideExclusions(containerEl: HTMLElement) {
+		let selectedSuggestion = '';
+		const parentEl = containerEl.parentElement;
+		if (!parentEl) return;
+
+		const wrapper = parentEl.createDiv({ cls: 'minimalist-exclusion-setting minimalist-exclusion-card' });
+		containerEl.insertAdjacentElement('afterend', wrapper);
+		if (!wrapper) return;
+		wrapper.createDiv({
+			cls: 'setting-item-name minimalist-exclusion-title',
+			text: 'Auto-hide exclusions'
+		});
+		wrapper.createDiv({
+			cls: 'setting-item-description minimalist-exclusion-description',
+			text: 'Exclude specific notes or folders from auto-hide.'
+		});
+
+		const controlEl = wrapper.createDiv({ cls: 'minimalist-exclusion-control' });
+
+		const search = new SearchComponent(controlEl);
+		search.setPlaceholder('Search notes or folders');
+		search.inputEl.addClass('minimalist-exclusion-input');
+
+		const addButton = controlEl.createEl('button', {
+			text: 'Add',
+			cls: 'mod-cta'
+		});
+
+		const listHost = wrapper.createDiv({ cls: 'minimalist-exclusion-list' });
+
+		const renderList = () => {
+			listHost.empty();
+
+			const items = this.plugin.getAutoHideUIExclusions();
+			if (!items.length) {
+				listHost.createDiv({
+					cls: 'setting-item-description minimalist-exclusion-empty',
+					text: 'No exclusions yet.'
+				});
+				return;
+			}
+
+			for (const path of items) {
+				const chip = listHost.createDiv({ cls: 'minimalist-exclusion-chip' });
+				chip.createSpan({ cls: 'minimalist-exclusion-chip-label', text: path });
+				chip.createEl('span', {
+					cls: 'minimalist-exclusion-chip-kind',
+					text: path.endsWith('/') ? 'Folder' : 'Note'
+				});
+
+				const removeButton = chip.createEl('button', {
+					text: 'x',
+					cls: 'minimalist-exclusion-chip-remove',
+					attr: { 'aria-label': `Remove ${path}` }
+				});
+				removeButton.addEventListener('click', async () => {
+					await this.plugin.removeAutoHideUIExclusion(path);
+					renderList();
+				});
+			}
+		};
+
+		const submitSelection = async () => {
+			const candidate = this.plugin.normalizeExclusionPath(selectedSuggestion || search.getValue());
+			if (!candidate) return;
+
+			const added = await this.plugin.addAutoHideUIExclusion(candidate);
+			if (!added) return;
+
+			selectedSuggestion = '';
+			search.setValue('');
+			renderList();
+		};
+
+		new AutoHideExclusionSuggest(this.app, search.inputEl, this.plugin, value => {
+			selectedSuggestion = value;
+		});
+
+		search.onChange(value => {
+			selectedSuggestion = this.plugin.normalizeExclusionPath(value);
+		});
+
+		search.inputEl.addEventListener('keydown', evt => {
+			if (evt.key !== 'Enter') return;
+			evt.preventDefault();
+			void submitSelection();
+		});
+
+		addButton.addEventListener('click', () => {
+			void submitSelection();
+		});
+
+		renderList();
+	}
+}
+
+class AutoHideExclusionSuggest extends AbstractInputSuggest<string> {
+	constructor(
+		app: App,
+		inputEl: HTMLInputElement,
+		private plugin: InlineOutlinePlugin,
+		private onChoose: (value: string) => void
+	) {
+		super(app, inputEl);
+	}
+
+	getSuggestions(query: string): string[] {
+		const normalizedQuery = query.trim().toLowerCase();
+		const existing = new Set(this.plugin.getAutoHideUIExclusions());
+		const candidates = this.plugin.getAutoHideUISuggestionItems()
+			.map(item => item.value)
+			.filter(value => !existing.has(value));
+
+		if (!normalizedQuery) {
+			return candidates.slice(0, 25);
+		}
+
+		const fuzzySearch = prepareFuzzySearch(normalizedQuery);
+		return candidates
+			.map(value => ({ value, match: fuzzySearch(value.toLowerCase()) }))
+			.filter(result => Boolean(result.match))
+			.sort((a, b) => (a.match?.score ?? Number.MAX_SAFE_INTEGER) - (b.match?.score ?? Number.MAX_SAFE_INTEGER))
+			.map(result => result.value)
+			.slice(0, 25);
+	}
+
+	renderSuggestion(value: string, el: HTMLElement) {
+		el.createDiv({ text: value });
+		el.createDiv({
+			cls: 'suggestion-note',
+			text: value.endsWith('/') ? 'Folder' : 'Note'
+		});
+	}
+
+	selectSuggestion(value: string) {
+		this.setValue(value);
+		this.onChoose(value);
+		this.close();
 	}
 }

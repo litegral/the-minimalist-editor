@@ -21,6 +21,7 @@ A lightweight table of contents on the right side.
 Keeps attention on what you're writing.
 
 - **Auto-hide UI** when you start writing
+- Optional **auto-hide exclusions** for specific notes or folders
 - Focus mode that **dims content except the current line/paragraph**
 
 ### Clean UI Options
@@ -59,6 +60,7 @@ Settings → **The Minimalist Editor**
 - Switch minimal style  
 - Enable focus mode  
 - Adjust dim opacity  
+- Add auto-hide exclusions for notes/folders  
 - Hide properties / scrollbar  
 
 ### Commands (Cmd/Ctrl + P)

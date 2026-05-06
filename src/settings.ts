@@ -7,6 +7,7 @@ export interface MinimalistSettings {
 	hideProperties: boolean;
 	hideScrollbar: boolean;
 	autoHideUI: boolean; // Added for Notion-style auto-hide
+	autoHideUIExclusions: string[];
 	
 	// Focus Mode
 	focusMode: boolean;
@@ -19,6 +20,7 @@ export const DEFAULT_SETTINGS: MinimalistSettings = {
 	hideProperties: true,
 	hideScrollbar: false,
 	autoHideUI: false, // Defaulting to false so it doesn't surprise users
+	autoHideUIExclusions: [],
 	focusMode: false,
 	focusDimOpacity: 30,
 }
