@@ -53,6 +53,14 @@ export default class InlineOutlinePlugin extends Plugin {
 	private sidebarObserver: ResizeObserver | null = null;
 	private cleanupFns: (() => void)[] = [];
 
+	private getBodyEl() {
+		return activeDocument.body;
+	}
+
+	private setOutlineHidden(hidden: boolean) {
+		this.outlineEl?.toggleClass('is-hidden', hidden);
+	}
+
 	async onload() {
 		await this.loadSettings();
 
@@ -67,37 +75,37 @@ export default class InlineOutlinePlugin extends Plugin {
 		this.registerEvent(this.app.workspace.on('active-leaf-change', () => {
 			this.applyBodyClasses();
 			this.cleanup();
-			setTimeout(() => this.init(), 100);
+			activeWindow.setTimeout(() => this.init(), 100);
 		}));
 		this.registerEvent(this.app.workspace.on('layout-change', () => {
 			this.applyBodyClasses();
 			this.updatePosition();
-			setTimeout(() => this.init(), 100);
+			activeWindow.setTimeout(() => this.init(), 100);
 		}));
 		this.registerEvent(this.app.metadataCache.on('changed', refresh));
-		this.registerDomEvent(window, 'focus', () => this.clearTargetFlashOnWindowReturn());
-		this.registerDomEvent(document, 'visibilitychange', () => {
-			if (!document.hidden) this.clearTargetFlashOnWindowReturn();
+		this.registerDomEvent(activeWindow, 'focus', () => this.clearTargetFlashOnWindowReturn());
+		this.registerDomEvent(activeDocument, 'visibilitychange', () => {
+			if (!activeDocument.hidden) this.clearTargetFlashOnWindowReturn();
 		});
-		this.registerDomEvent(document, 'pointerdown', (evt: PointerEvent) => this.clearTargetFlashBeforeInteraction(evt), { capture: true });
+		this.registerDomEvent(activeDocument, 'pointerdown', (evt: PointerEvent) => this.clearTargetFlashBeforeInteraction(evt), { capture: true });
 
 		// --- Auto-Hide UI Logic (Notion Style) ---
 		// 1. Wake up the UI when the mouse moves anywhere
-		this.registerDomEvent(document, 'mousemove', () => {
-			if (this.isAutoHideUIEnabledForCurrentFile() && document.body.classList.contains('zen-ui-hidden')) {
-				document.body.classList.remove('zen-ui-hidden');
+		this.registerDomEvent(activeDocument, 'mousemove', () => {
+			if (this.isAutoHideUIEnabledForCurrentFile() && this.getBodyEl().classList.contains('zen-ui-hidden')) {
+				this.getBodyEl().classList.remove('zen-ui-hidden');
 			}
 		});
 
 		// 2. Hide the UI when typing starts inside the editor
-		this.registerDomEvent(document, 'keydown', (evt: KeyboardEvent) => {
+		this.registerDomEvent(activeDocument, 'keydown', (evt: KeyboardEvent) => {
 			if (!this.isAutoHideUIEnabledForCurrentFile()) return;
 			
 			const target = evt.target as HTMLElement;
 			if (target && target.closest('.cm-editor')) {
 				// Don't hide if pressing modifier keys by themselves
 				if (['Control', 'Shift', 'Meta', 'Alt', 'CapsLock', 'Tab'].includes(evt.key)) return;
-				document.body.classList.add('zen-ui-hidden');
+				this.getBodyEl().classList.add('zen-ui-hidden');
 			}
 		});
 		// ------------------------------------------
@@ -105,7 +113,7 @@ export default class InlineOutlinePlugin extends Plugin {
 		this.app.workspace.onLayoutReady(() => {
 			this.createOutline();
 			this.observeSidebar();
-			setTimeout(() => this.init(), 100);
+			activeWindow.setTimeout(() => this.init(), 100);
 		});
 	}
 
@@ -122,7 +130,7 @@ export default class InlineOutlinePlugin extends Plugin {
 		this.sidebarObserver?.disconnect();
 		
 		// Clean up all custom classes
-		document.body.classList.remove(
+		this.getBodyEl().classList.remove(
 			'minimalist-hide-properties', 
 			'minimalist-hide-scrollbar', 
 			'minimalist-focus-mode',
@@ -150,11 +158,11 @@ export default class InlineOutlinePlugin extends Plugin {
 
 		if (hide) {
 			this.outlineEl.empty();
-			this.outlineEl.style.display = 'none';
+			this.setOutlineHidden(true);
 			return;
 		}
 
-		this.outlineEl.style.display = '';
+		this.setOutlineHidden(false);
 		this.render();
 	}
 
@@ -167,7 +175,7 @@ export default class InlineOutlinePlugin extends Plugin {
 		}
 
 		if (this.outlineEl) {
-			this.outlineEl.style.display = '';
+			this.setOutlineHidden(false);
 		}
 
 		this.isReading = view.getMode() === 'preview';
@@ -185,11 +193,11 @@ export default class InlineOutlinePlugin extends Plugin {
 			const cm = this.getCM(view);
 			if (cm) {
 				const onCursor = () => this.scheduleRAF('focusRAF', () => this.updateFocus());
-				document.addEventListener('selectionchange', onCursor);
+				activeDocument.addEventListener('selectionchange', onCursor);
 				cm.contentDOM.addEventListener('keyup', onCursor, { passive: true });
 				cm.contentDOM.addEventListener('click', onCursor, { passive: true });
 				this.cleanupFns.push(() => {
-					document.removeEventListener('selectionchange', onCursor);
+					activeDocument.removeEventListener('selectionchange', onCursor);
 					cm.contentDOM.removeEventListener('keyup', onCursor);
 					cm.contentDOM.removeEventListener('click', onCursor);
 				});
@@ -197,7 +205,7 @@ export default class InlineOutlinePlugin extends Plugin {
 		}
 
 		this.refresh();
-		if (this.settings.focusMode) setTimeout(() => this.updateFocus(), 50);
+		if (this.settings.focusMode) activeWindow.setTimeout(() => this.updateFocus(), 50);
 	}
 
 	private scheduleRAF(key: 'scrollRAF' | 'resizeRAF' | 'focusRAF', fn: () => void) {
@@ -212,7 +220,7 @@ export default class InlineOutlinePlugin extends Plugin {
 	}
 
 	private clearObsidianTargetFlash() {
-		document.querySelectorAll('.is-flashing, .minimalist-flash-fading').forEach(el => {
+		activeDocument.querySelectorAll('.is-flashing, .minimalist-flash-fading').forEach((el: Element) => {
 			el.classList.remove('is-flashing', 'minimalist-flash-fading');
 		});
 	}
@@ -226,11 +234,11 @@ export default class InlineOutlinePlugin extends Plugin {
 		this.targetFlashReturnGuardTimer = null;
 		this.targetFlashSuppressTimers.forEach(timer => window.clearTimeout(timer));
 		this.targetFlashSuppressTimers = [];
-		document.body.classList.remove('minimalist-suppress-target-flash');
+		this.getBodyEl().classList.remove('minimalist-suppress-target-flash');
 	}
 
 	private queueTargetFlashSuppressClear(delay: number) {
-		const timer = window.setTimeout(() => {
+		const timer = activeWindow.setTimeout(() => {
 			this.clearNavigationArtifacts();
 			this.targetFlashSuppressTimers = this.targetFlashSuppressTimers.filter(active => active !== timer);
 		}, delay);
@@ -241,13 +249,13 @@ export default class InlineOutlinePlugin extends Plugin {
 	private suppressTargetFlashBriefly() {
 		this.cancelTargetFlashSuppression();
 
-		document.body.classList.add('minimalist-suppress-target-flash');
+		this.getBodyEl().classList.add('minimalist-suppress-target-flash');
 		this.clearNavigationArtifacts();
 		[50, 200, 700, 1200].forEach(delay => this.queueTargetFlashSuppressClear(delay));
 
-		this.targetFlashReturnGuardTimer = window.setTimeout(() => {
+		this.targetFlashReturnGuardTimer = activeWindow.setTimeout(() => {
 			this.clearNavigationArtifacts();
-			document.body.classList.remove('minimalist-suppress-target-flash');
+			this.getBodyEl().classList.remove('minimalist-suppress-target-flash');
 			this.shouldClearTargetFlashOnFocus = false;
 			this.targetFlashReturnGuardTimer = null;
 		}, TARGET_FLASH_RETURN_GUARD_MS);
@@ -279,14 +287,14 @@ export default class InlineOutlinePlugin extends Plugin {
 	}
 
 	private scheduleVisibleTargetFlashRemoval() {
-		if (this.targetFlashRemovalTimer || !document.querySelector('.is-flashing')) return;
-		this.targetFlashRemovalTimer = window.setTimeout(() => {
-			document.querySelectorAll('.is-flashing').forEach(el => {
+		if (this.targetFlashRemovalTimer || !activeDocument.querySelector('.is-flashing')) return;
+		this.targetFlashRemovalTimer = activeWindow.setTimeout(() => {
+			activeDocument.querySelectorAll('.is-flashing').forEach((el: Element) => {
 				el.classList.add('minimalist-flash-fading');
 				el.classList.remove('is-flashing');
 			});
 
-			this.targetFlashRemovalTimer = window.setTimeout(() => {
+			this.targetFlashRemovalTimer = activeWindow.setTimeout(() => {
 				this.clearNavigationArtifacts();
 				this.targetFlashRemovalTimer = null;
 			}, TARGET_FLASH_FADE_MS);
@@ -297,7 +305,7 @@ export default class InlineOutlinePlugin extends Plugin {
 		this.stopWatchingTargetFlash();
 
 		this.targetFlashObserver = new MutationObserver(() => this.scheduleVisibleTargetFlashRemoval());
-		this.targetFlashObserver.observe(document.body, {
+		this.targetFlashObserver.observe(this.getBodyEl(), {
 			attributeFilter: ['class'],
 			attributes: true,
 			childList: true,
@@ -309,25 +317,26 @@ export default class InlineOutlinePlugin extends Plugin {
 			this.stopWatchingTargetFlash();
 		};
 		const clearOnVisibilityChange = () => {
-			if (document.hidden) clearOnWindowLeave();
+			if (activeDocument.hidden) clearOnWindowLeave();
 		};
 
-		window.addEventListener('blur', clearOnWindowLeave);
-		document.addEventListener('visibilitychange', clearOnVisibilityChange);
+		activeWindow.addEventListener('blur', clearOnWindowLeave);
+		activeDocument.addEventListener('visibilitychange', clearOnVisibilityChange);
 		this.targetFlashFocusCleanup = () => {
-			window.removeEventListener('blur', clearOnWindowLeave);
-			document.removeEventListener('visibilitychange', clearOnVisibilityChange);
+			activeWindow.removeEventListener('blur', clearOnWindowLeave);
+			activeDocument.removeEventListener('visibilitychange', clearOnVisibilityChange);
 		};
 
-		window.setTimeout(() => this.scheduleVisibleTargetFlashRemoval(), 0);
+		activeWindow.setTimeout(() => this.scheduleVisibleTargetFlashRemoval(), 0);
 
-		this.navigationCleanupTimer = window.setTimeout(() => {
+		this.navigationCleanupTimer = activeWindow.setTimeout(() => {
 			this.stopWatchingTargetFlash();
 		}, 3000);
 	}
 
 	private toggleOutline() {
-		if (this.outlineEl) this.outlineEl.style.display = this.outlineEl.style.display === 'none' ? '' : 'none';
+		if (!this.outlineEl) return;
+		this.setOutlineHidden(!this.outlineEl.hasClass('is-hidden'));
 	}
 
 	private toggleFocusMode() {
@@ -346,14 +355,14 @@ export default class InlineOutlinePlugin extends Plugin {
 	private createOutline() {
 		this.outlineEl?.remove();
 		if (!this.settings.showOutline) return;
-		this.outlineEl = document.body.createDiv({
+		this.outlineEl = this.getBodyEl().createDiv({
 			cls: 'inline-outline' + (this.settings.minimalOutline ? ' minimal-style' : ''),
 			attr: { id: 'inline-outline' }
 		});
 	}
 
 	applyBodyClasses() {
-		const { classList } = document.body;
+		const { classList } = this.getBodyEl();
 		classList.toggle('minimalist-hide-properties', this.settings.hideProperties);
 		classList.toggle('minimalist-hide-scrollbar', this.settings.hideScrollbar);
 		classList.toggle('minimalist-focus-mode', this.settings.focusMode);
@@ -445,7 +454,9 @@ export default class InlineOutlinePlugin extends Plugin {
 	}
 
 	updateFocusOpacity() {
-		document.documentElement.style.setProperty('--focus-dim-opacity', String(this.settings.focusDimOpacity / 100));
+		activeDocument.documentElement.setCssProps({
+			'--focus-dim-opacity': String(this.settings.focusDimOpacity / 100)
+		});
 	}
 
 	updateOutlineStyle() {
@@ -462,7 +473,7 @@ export default class InlineOutlinePlugin extends Plugin {
 	}
 
 	private observeSidebar() {
-		const sidebar = document.querySelector('.mod-right-split');
+		const sidebar = activeDocument.querySelector('.mod-right-split');
 		if (!sidebar) return;
 		this.sidebarObserver = new ResizeObserver(() => this.scheduleRAF('resizeRAF', () => this.updatePosition()));
 		this.sidebarObserver.observe(sidebar);
@@ -470,7 +481,7 @@ export default class InlineOutlinePlugin extends Plugin {
 
 	private updatePosition() {
 		if (!this.outlineEl) return;
-		const w = document.querySelector('.mod-right-split')?.getBoundingClientRect().width || 0;
+		const w = activeDocument.querySelector('.mod-right-split')?.getBoundingClientRect().width || 0;
 		this.outlineEl.style.right = `${w > 0 ? w + 24 : 24}px`;
 	}
 
@@ -487,7 +498,7 @@ export default class InlineOutlinePlugin extends Plugin {
 		this.render();
 		this.activeIndex = -1;
 		if (this.isReading) {
-			setTimeout(() => this.updateActive(), 150);
+			activeWindow.setTimeout(() => this.updateActive(), 150);
 		} else {
 			this.updateActive();
 		}
@@ -518,7 +529,7 @@ export default class InlineOutlinePlugin extends Plugin {
 			return;
 		}
 
-		const frag = document.createDocumentFragment();
+		const frag = createFragment();
 		this.headings.forEach((h, i) => {
 			const item = frag.createDiv({ cls: `inline-outline-item inline-outline-level-${h.level}` });
 			item.createDiv({ cls: 'inline-outline-line' });
@@ -619,10 +630,10 @@ export default class InlineOutlinePlugin extends Plugin {
 		const file = this.app.workspace.getActiveFile();
 		if (file) void this.app.workspace.openLinkText(`${file.path}#${h.text}`, file.path, false);
 
-		window.setTimeout(() => this.updateActive(), 80);
-		window.setTimeout(() => this.updateActive(), 180);
-		window.setTimeout(() => this.updateActive(), 320);
-		window.setTimeout(() => this.updateActive(), 700);
+		activeWindow.setTimeout(() => this.updateActive(), 80);
+		activeWindow.setTimeout(() => this.updateActive(), 180);
+		activeWindow.setTimeout(() => this.updateActive(), 320);
+		activeWindow.setTimeout(() => this.updateActive(), 700);
 	}
 
 	private updateFocus() {
@@ -711,7 +722,7 @@ export default class InlineOutlinePlugin extends Plugin {
 	}
 
 	private clearFocusClasses() {
-		document.querySelectorAll(FOCUS_CLASSES.map(c => `.${c}`).join(',')).forEach(el => 
+		activeDocument.querySelectorAll(FOCUS_CLASSES.map(c => `.${c}`).join(',')).forEach((el: Element) => 
 			FOCUS_CLASSES.forEach(c => el.classList.remove(c))
 		);
 		this.lastFocusLine = this.lastFocusIdx = -1;
@@ -823,19 +834,20 @@ class MinimalistSettingTab extends PluginSettingTab {
 			for (const path of items) {
 				const chip = listHost.createDiv({ cls: 'minimalist-exclusion-chip' });
 				chip.createSpan({ cls: 'minimalist-exclusion-chip-label', text: path });
-				chip.createEl('span', {
+				chip.createSpan({
 					cls: 'minimalist-exclusion-chip-kind',
 					text: path.endsWith('/') ? 'Folder' : 'Note'
 				});
 
 				const removeButton = chip.createEl('button', {
-					text: 'x',
+					text: 'Remove',
 					cls: 'minimalist-exclusion-chip-remove',
 					attr: { 'aria-label': `Remove ${path}` }
 				});
-				removeButton.addEventListener('click', async () => {
-					await this.plugin.removeAutoHideUIExclusion(path);
-					renderList();
+				removeButton.addEventListener('click', () => {
+					void this.plugin.removeAutoHideUIExclusion(path).then(() => {
+						renderList();
+					});
 				});
 			}
 		};

@@ -75,6 +75,13 @@ var InlineOutlinePlugin = class extends import_obsidian.Plugin {
     this.sidebarObserver = null;
     this.cleanupFns = [];
   }
+  getBodyEl() {
+    return activeDocument.body;
+  }
+  setOutlineHidden(hidden) {
+    var _a;
+    (_a = this.outlineEl) == null ? void 0 : _a.toggleClass("is-hidden", hidden);
+  }
   async onload() {
     await this.loadSettings();
     this.applyBodyClasses();
@@ -86,39 +93,39 @@ var InlineOutlinePlugin = class extends import_obsidian.Plugin {
     this.registerEvent(this.app.workspace.on("active-leaf-change", () => {
       this.applyBodyClasses();
       this.cleanup();
-      setTimeout(() => this.init(), 100);
+      activeWindow.setTimeout(() => this.init(), 100);
     }));
     this.registerEvent(this.app.workspace.on("layout-change", () => {
       this.applyBodyClasses();
       this.updatePosition();
-      setTimeout(() => this.init(), 100);
+      activeWindow.setTimeout(() => this.init(), 100);
     }));
     this.registerEvent(this.app.metadataCache.on("changed", refresh));
-    this.registerDomEvent(window, "focus", () => this.clearTargetFlashOnWindowReturn());
-    this.registerDomEvent(document, "visibilitychange", () => {
-      if (!document.hidden)
+    this.registerDomEvent(activeWindow, "focus", () => this.clearTargetFlashOnWindowReturn());
+    this.registerDomEvent(activeDocument, "visibilitychange", () => {
+      if (!activeDocument.hidden)
         this.clearTargetFlashOnWindowReturn();
     });
-    this.registerDomEvent(document, "pointerdown", (evt) => this.clearTargetFlashBeforeInteraction(evt), { capture: true });
-    this.registerDomEvent(document, "mousemove", () => {
-      if (this.isAutoHideUIEnabledForCurrentFile() && document.body.classList.contains("zen-ui-hidden")) {
-        document.body.classList.remove("zen-ui-hidden");
+    this.registerDomEvent(activeDocument, "pointerdown", (evt) => this.clearTargetFlashBeforeInteraction(evt), { capture: true });
+    this.registerDomEvent(activeDocument, "mousemove", () => {
+      if (this.isAutoHideUIEnabledForCurrentFile() && this.getBodyEl().classList.contains("zen-ui-hidden")) {
+        this.getBodyEl().classList.remove("zen-ui-hidden");
       }
     });
-    this.registerDomEvent(document, "keydown", (evt) => {
+    this.registerDomEvent(activeDocument, "keydown", (evt) => {
       if (!this.isAutoHideUIEnabledForCurrentFile())
         return;
       const target = evt.target;
       if (target && target.closest(".cm-editor")) {
         if (["Control", "Shift", "Meta", "Alt", "CapsLock", "Tab"].includes(evt.key))
           return;
-        document.body.classList.add("zen-ui-hidden");
+        this.getBodyEl().classList.add("zen-ui-hidden");
       }
     });
     this.app.workspace.onLayoutReady(() => {
       this.createOutline();
       this.observeSidebar();
-      setTimeout(() => this.init(), 100);
+      activeWindow.setTimeout(() => this.init(), 100);
     });
   }
   onunload() {
@@ -136,7 +143,7 @@ var InlineOutlinePlugin = class extends import_obsidian.Plugin {
     (_b = this.targetFlashObserver) == null ? void 0 : _b.disconnect();
     (_c = this.targetFlashFocusCleanup) == null ? void 0 : _c.call(this);
     (_d = this.sidebarObserver) == null ? void 0 : _d.disconnect();
-    document.body.classList.remove(
+    this.getBodyEl().classList.remove(
       "minimalist-hide-properties",
       "minimalist-hide-scrollbar",
       "minimalist-focus-mode",
@@ -161,10 +168,10 @@ var InlineOutlinePlugin = class extends import_obsidian.Plugin {
       return;
     if (hide) {
       this.outlineEl.empty();
-      this.outlineEl.style.display = "none";
+      this.setOutlineHidden(true);
       return;
     }
-    this.outlineEl.style.display = "";
+    this.setOutlineHidden(false);
     this.render();
   }
   init() {
@@ -176,7 +183,7 @@ var InlineOutlinePlugin = class extends import_obsidian.Plugin {
       return;
     }
     if (this.outlineEl) {
-      this.outlineEl.style.display = "";
+      this.setOutlineHidden(false);
     }
     this.isReading = view.getMode() === "preview";
     this.scrollContainer = view.contentEl.querySelector(this.isReading ? ".markdown-preview-view" : ".cm-scroller");
@@ -194,11 +201,11 @@ var InlineOutlinePlugin = class extends import_obsidian.Plugin {
       const cm = this.getCM(view);
       if (cm) {
         const onCursor = () => this.scheduleRAF("focusRAF", () => this.updateFocus());
-        document.addEventListener("selectionchange", onCursor);
+        activeDocument.addEventListener("selectionchange", onCursor);
         cm.contentDOM.addEventListener("keyup", onCursor, { passive: true });
         cm.contentDOM.addEventListener("click", onCursor, { passive: true });
         this.cleanupFns.push(() => {
-          document.removeEventListener("selectionchange", onCursor);
+          activeDocument.removeEventListener("selectionchange", onCursor);
           cm.contentDOM.removeEventListener("keyup", onCursor);
           cm.contentDOM.removeEventListener("click", onCursor);
         });
@@ -206,7 +213,7 @@ var InlineOutlinePlugin = class extends import_obsidian.Plugin {
     }
     this.refresh();
     if (this.settings.focusMode)
-      setTimeout(() => this.updateFocus(), 50);
+      activeWindow.setTimeout(() => this.updateFocus(), 50);
   }
   scheduleRAF(key, fn) {
     if (this[key])
@@ -224,7 +231,7 @@ var InlineOutlinePlugin = class extends import_obsidian.Plugin {
     return (_b = (_a = view.editor) == null ? void 0 : _a.cm) != null ? _b : null;
   }
   clearObsidianTargetFlash() {
-    document.querySelectorAll(".is-flashing, .minimalist-flash-fading").forEach((el) => {
+    activeDocument.querySelectorAll(".is-flashing, .minimalist-flash-fading").forEach((el) => {
       el.classList.remove("is-flashing", "minimalist-flash-fading");
     });
   }
@@ -237,10 +244,10 @@ var InlineOutlinePlugin = class extends import_obsidian.Plugin {
     this.targetFlashReturnGuardTimer = null;
     this.targetFlashSuppressTimers.forEach((timer) => window.clearTimeout(timer));
     this.targetFlashSuppressTimers = [];
-    document.body.classList.remove("minimalist-suppress-target-flash");
+    this.getBodyEl().classList.remove("minimalist-suppress-target-flash");
   }
   queueTargetFlashSuppressClear(delay) {
-    const timer = window.setTimeout(() => {
+    const timer = activeWindow.setTimeout(() => {
       this.clearNavigationArtifacts();
       this.targetFlashSuppressTimers = this.targetFlashSuppressTimers.filter((active) => active !== timer);
     }, delay);
@@ -248,12 +255,12 @@ var InlineOutlinePlugin = class extends import_obsidian.Plugin {
   }
   suppressTargetFlashBriefly() {
     this.cancelTargetFlashSuppression();
-    document.body.classList.add("minimalist-suppress-target-flash");
+    this.getBodyEl().classList.add("minimalist-suppress-target-flash");
     this.clearNavigationArtifacts();
     [50, 200, 700, 1200].forEach((delay) => this.queueTargetFlashSuppressClear(delay));
-    this.targetFlashReturnGuardTimer = window.setTimeout(() => {
+    this.targetFlashReturnGuardTimer = activeWindow.setTimeout(() => {
       this.clearNavigationArtifacts();
-      document.body.classList.remove("minimalist-suppress-target-flash");
+      this.getBodyEl().classList.remove("minimalist-suppress-target-flash");
       this.shouldClearTargetFlashOnFocus = false;
       this.targetFlashReturnGuardTimer = null;
     }, TARGET_FLASH_RETURN_GUARD_MS);
@@ -285,14 +292,14 @@ var InlineOutlinePlugin = class extends import_obsidian.Plugin {
     this.targetFlashFocusCleanup = null;
   }
   scheduleVisibleTargetFlashRemoval() {
-    if (this.targetFlashRemovalTimer || !document.querySelector(".is-flashing"))
+    if (this.targetFlashRemovalTimer || !activeDocument.querySelector(".is-flashing"))
       return;
-    this.targetFlashRemovalTimer = window.setTimeout(() => {
-      document.querySelectorAll(".is-flashing").forEach((el) => {
+    this.targetFlashRemovalTimer = activeWindow.setTimeout(() => {
+      activeDocument.querySelectorAll(".is-flashing").forEach((el) => {
         el.classList.add("minimalist-flash-fading");
         el.classList.remove("is-flashing");
       });
-      this.targetFlashRemovalTimer = window.setTimeout(() => {
+      this.targetFlashRemovalTimer = activeWindow.setTimeout(() => {
         this.clearNavigationArtifacts();
         this.targetFlashRemovalTimer = null;
       }, TARGET_FLASH_FADE_MS);
@@ -301,7 +308,7 @@ var InlineOutlinePlugin = class extends import_obsidian.Plugin {
   watchTargetFlash() {
     this.stopWatchingTargetFlash();
     this.targetFlashObserver = new MutationObserver(() => this.scheduleVisibleTargetFlashRemoval());
-    this.targetFlashObserver.observe(document.body, {
+    this.targetFlashObserver.observe(this.getBodyEl(), {
       attributeFilter: ["class"],
       attributes: true,
       childList: true,
@@ -312,23 +319,24 @@ var InlineOutlinePlugin = class extends import_obsidian.Plugin {
       this.stopWatchingTargetFlash();
     };
     const clearOnVisibilityChange = () => {
-      if (document.hidden)
+      if (activeDocument.hidden)
         clearOnWindowLeave();
     };
-    window.addEventListener("blur", clearOnWindowLeave);
-    document.addEventListener("visibilitychange", clearOnVisibilityChange);
+    activeWindow.addEventListener("blur", clearOnWindowLeave);
+    activeDocument.addEventListener("visibilitychange", clearOnVisibilityChange);
     this.targetFlashFocusCleanup = () => {
-      window.removeEventListener("blur", clearOnWindowLeave);
-      document.removeEventListener("visibilitychange", clearOnVisibilityChange);
+      activeWindow.removeEventListener("blur", clearOnWindowLeave);
+      activeDocument.removeEventListener("visibilitychange", clearOnVisibilityChange);
     };
-    window.setTimeout(() => this.scheduleVisibleTargetFlashRemoval(), 0);
-    this.navigationCleanupTimer = window.setTimeout(() => {
+    activeWindow.setTimeout(() => this.scheduleVisibleTargetFlashRemoval(), 0);
+    this.navigationCleanupTimer = activeWindow.setTimeout(() => {
       this.stopWatchingTargetFlash();
     }, 3e3);
   }
   toggleOutline() {
-    if (this.outlineEl)
-      this.outlineEl.style.display = this.outlineEl.style.display === "none" ? "" : "none";
+    if (!this.outlineEl)
+      return;
+    this.setOutlineHidden(!this.outlineEl.hasClass("is-hidden"));
   }
   toggleFocusMode() {
     this.settings.focusMode = !this.settings.focusMode;
@@ -347,13 +355,13 @@ var InlineOutlinePlugin = class extends import_obsidian.Plugin {
     (_a = this.outlineEl) == null ? void 0 : _a.remove();
     if (!this.settings.showOutline)
       return;
-    this.outlineEl = document.body.createDiv({
+    this.outlineEl = this.getBodyEl().createDiv({
       cls: "inline-outline" + (this.settings.minimalOutline ? " minimal-style" : ""),
       attr: { id: "inline-outline" }
     });
   }
   applyBodyClasses() {
-    const { classList } = document.body;
+    const { classList } = this.getBodyEl();
     classList.toggle("minimalist-hide-properties", this.settings.hideProperties);
     classList.toggle("minimalist-hide-scrollbar", this.settings.hideScrollbar);
     classList.toggle("minimalist-focus-mode", this.settings.focusMode);
@@ -425,7 +433,9 @@ var InlineOutlinePlugin = class extends import_obsidian.Plugin {
     return !this.isAutoHideUIExcluded(filePath);
   }
   updateFocusOpacity() {
-    document.documentElement.style.setProperty("--focus-dim-opacity", String(this.settings.focusDimOpacity / 100));
+    activeDocument.documentElement.setCssProps({
+      "--focus-dim-opacity": String(this.settings.focusDimOpacity / 100)
+    });
   }
   updateOutlineStyle() {
     var _a;
@@ -444,7 +454,7 @@ var InlineOutlinePlugin = class extends import_obsidian.Plugin {
     }
   }
   observeSidebar() {
-    const sidebar = document.querySelector(".mod-right-split");
+    const sidebar = activeDocument.querySelector(".mod-right-split");
     if (!sidebar)
       return;
     this.sidebarObserver = new ResizeObserver(() => this.scheduleRAF("resizeRAF", () => this.updatePosition()));
@@ -454,7 +464,7 @@ var InlineOutlinePlugin = class extends import_obsidian.Plugin {
     var _a;
     if (!this.outlineEl)
       return;
-    const w = ((_a = document.querySelector(".mod-right-split")) == null ? void 0 : _a.getBoundingClientRect().width) || 0;
+    const w = ((_a = activeDocument.querySelector(".mod-right-split")) == null ? void 0 : _a.getBoundingClientRect().width) || 0;
     this.outlineEl.style.right = `${w > 0 ? w + 24 : 24}px`;
   }
   refresh() {
@@ -470,7 +480,7 @@ var InlineOutlinePlugin = class extends import_obsidian.Plugin {
     this.render();
     this.activeIndex = -1;
     if (this.isReading) {
-      setTimeout(() => this.updateActive(), 150);
+      activeWindow.setTimeout(() => this.updateActive(), 150);
     } else {
       this.updateActive();
     }
@@ -493,7 +503,7 @@ var InlineOutlinePlugin = class extends import_obsidian.Plugin {
       this.outlineEl.createDiv({ cls: "inline-outline-empty", text: "No headings" });
       return;
     }
-    const frag = document.createDocumentFragment();
+    const frag = createFragment();
     this.headings.forEach((h, i) => {
       const item = frag.createDiv({ cls: `inline-outline-item inline-outline-level-${h.level}` });
       item.createDiv({ cls: "inline-outline-line" });
@@ -596,10 +606,10 @@ var InlineOutlinePlugin = class extends import_obsidian.Plugin {
     const file = this.app.workspace.getActiveFile();
     if (file)
       void this.app.workspace.openLinkText(`${file.path}#${h.text}`, file.path, false);
-    window.setTimeout(() => this.updateActive(), 80);
-    window.setTimeout(() => this.updateActive(), 180);
-    window.setTimeout(() => this.updateActive(), 320);
-    window.setTimeout(() => this.updateActive(), 700);
+    activeWindow.setTimeout(() => this.updateActive(), 80);
+    activeWindow.setTimeout(() => this.updateActive(), 180);
+    activeWindow.setTimeout(() => this.updateActive(), 320);
+    activeWindow.setTimeout(() => this.updateActive(), 700);
   }
   updateFocus() {
     if (!this.settings.focusMode)
@@ -706,7 +716,7 @@ var InlineOutlinePlugin = class extends import_obsidian.Plugin {
     });
   }
   clearFocusClasses() {
-    document.querySelectorAll(FOCUS_CLASSES.map((c) => `.${c}`).join(",")).forEach(
+    activeDocument.querySelectorAll(FOCUS_CLASSES.map((c) => `.${c}`).join(",")).forEach(
       (el) => FOCUS_CLASSES.forEach((c) => el.classList.remove(c))
     );
     this.lastFocusLine = this.lastFocusIdx = -1;
@@ -811,18 +821,19 @@ var MinimalistSettingTab = class extends import_obsidian.PluginSettingTab {
       for (const path of items) {
         const chip = listHost.createDiv({ cls: "minimalist-exclusion-chip" });
         chip.createSpan({ cls: "minimalist-exclusion-chip-label", text: path });
-        chip.createEl("span", {
+        chip.createSpan({
           cls: "minimalist-exclusion-chip-kind",
           text: path.endsWith("/") ? "Folder" : "Note"
         });
         const removeButton = chip.createEl("button", {
-          text: "x",
+          text: "Remove",
           cls: "minimalist-exclusion-chip-remove",
           attr: { "aria-label": `Remove ${path}` }
         });
-        removeButton.addEventListener("click", async () => {
-          await this.plugin.removeAutoHideUIExclusion(path);
-          renderList();
+        removeButton.addEventListener("click", () => {
+          void this.plugin.removeAutoHideUIExclusion(path).then(() => {
+            renderList();
+          });
         });
       }
     };
