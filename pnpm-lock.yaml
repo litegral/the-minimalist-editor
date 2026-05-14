@@ -18,7 +18,7 @@ importers:
         specifier: 0.17.3
         version: 0.17.3
       eslint:
-        specifier: ^9.39.2
+        specifier: ^9.39.4
         version: 9.39.4
       eslint-plugin-obsidianmd:
         specifier: ^0.1.9
